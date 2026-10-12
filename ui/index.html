@@ -8,60 +8,57 @@
 <link rel="preconnect" href="https://images.unsplash.com"/>
 <style>
 :root{
-  --bg:#05080f; --bg2:#0a1120; --card:#0d1626; --card2:#111c30;
-  --line:#1c2b45; --line2:#25395c;
-  --txt:#e8eef9; --mut:#8fa3bf; --mut2:#5d7290;
-  --blue:#4f7dff; --blue2:#7ba1ff; --teal:#2dd4bf; --teal2:#5eead4;
-  --gold:#f5b14c; --red:#f87171;
-  --grad:linear-gradient(120deg,#4f7dff,#2dd4bf);
+  --bg:#f7f8fc; --bg2:#ffffff; --card:#ffffff; --card2:#f1f4fa;
+  --line:#e4e9f2; --line2:#cfd8e8;
+  --txt:#0f172a; --mut:#475569; --mut2:#8296b0;
+  --ind:#4f46e5; --ind2:#6366f1; --teal:#0d9488; --teal2:#14b8a6;
+  --gold:#b45309; --red:#dc2626; --green:#059669;
+  --grad:linear-gradient(120deg,#4f46e5,#0d9488);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);line-height:1.6;overflow-x:hidden}
-::selection{background:#4f7dff44}
-h1,h2,h3,h4{font-family:Georgia,'Times New Roman',serif;font-weight:600;letter-spacing:-.01em}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:#4f46e522}
+h1,h2,h3,h4{font-weight:700;letter-spacing:-.02em}
 code,pre,.mono{font-family:'Cascadia Code','Fira Code',Consolas,monospace}
 a{color:inherit;text-decoration:none}
 img{max-width:100%;display:block}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 26px;border-radius:10px;font-weight:600;font-size:.95rem;transition:.25s;cursor:pointer;border:0}
 .btn svg{width:16px;height:16px}
-.b-pri{background:var(--grad);color:#05080f}
-.b-pri:hover{transform:translateY(-2px);box-shadow:0 10px 34px #4f7dff55}
-.b-gho{background:transparent;color:var(--txt);border:1px solid var(--line2)}
-.b-gho:hover{border-color:var(--blue);background:#4f7dff0d}
+.b-pri{background:var(--grad);color:#fff;box-shadow:0 4px 18px #4f46e533}
+.b-pri:hover{transform:translateY(-2px);box-shadow:0 10px 30px #4f46e544}
+.b-gho{background:#fff;color:var(--txt);border:1px solid var(--line2)}
+.b-gho:hover{border-color:var(--ind);background:#4f46e50a}
 .tag{display:inline-flex;align-items:center;gap:7px;padding:4px 13px;border-radius:99px;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.t-teal{background:#2dd4bf18;color:var(--teal2);border:1px solid #2dd4bf33}
-.t-blue{background:#4f7dff18;color:var(--blue2);border:1px solid #4f7dff33}
-.t-gold{background:#f5b14c18;color:var(--gold);border:1px solid #f5b14c33}
-.t-red{background:#f8717118;color:var(--red);border:1px solid #f8717133}
-.kick{color:var(--teal);font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
-.kick::before{content:'';width:34px;height:1px;background:var(--grad)}
+.t-teal{background:#0d948812;color:var(--teal);border:1px solid #0d948830}
+.t-blue{background:#4f46e512;color:var(--ind);border:1px solid #4f46e530}
+.t-gold{background:#b4530912;color:var(--gold);border:1px solid #b4530930}
+.t-red{background:#dc262612;color:var(--red);border:1px solid #dc262630}
+.kick{color:var(--ind);font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.kick::before{content:'';width:34px;height:2px;background:var(--grad);border-radius:2px}
 
 /* ── NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#05080f88;backdrop-filter:blur(16px);border-bottom:1px solid #ffffff08}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#ffffffd9;backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
 .nav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:72px}
-.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:1.18rem}
+.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:1.18rem;color:var(--txt)}
 .logo b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .nlinks{display:flex;gap:32px;align-items:center}
-.nlinks a{color:var(--mut);font-size:.92rem;transition:.2s}
-.nlinks a:hover{color:var(--txt)}
+.nlinks a{color:var(--mut);font-size:.92rem;transition:.2s;font-weight:500}
+.nlinks a:hover{color:var(--ind)}
 .nav-cta{display:flex;gap:12px;align-items:center}
 .nav-cta .btn{padding:9px 20px;font-size:.87rem}
-.burger{display:none;background:none;border:1px solid var(--line);border-radius:8px;padding:8px;cursor:pointer}
+.burger{display:none;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:8px;cursor:pointer}
 .burger svg{width:20px;height:20px;stroke:var(--txt)}
 @media(max-width:860px){
   .burger{display:block}
-  .nlinks{position:fixed;top:72px;left:0;right:0;background:#0a1120f5;flex-direction:column;padding:28px;gap:20px;border-bottom:1px solid var(--line);display:none}
+  .nlinks{position:fixed;top:72px;left:0;right:0;background:#fffffff5;flex-direction:column;padding:28px;gap:20px;border-bottom:1px solid var(--line);display:none}
   .nlinks.open{display:flex}
   .nav-cta .btn.b-gho{display:none}
 }
 
 /* ── HERO */
-.hero{padding:158px 0 90px;position:relative}
-.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.5;pointer-events:none}
-.o1{width:520px;height:520px;background:#4f7dff22;top:-140px;left:-160px}
-.o2{width:430px;height:430px;background:#2dd4bf1c;top:90px;right:-140px}
+.hero{padding:158px 0 90px;position:relative;background:radial-gradient(1000px 480px at 15% -10%,#4f46e50f,transparent),radial-gradient(800px 400px at 90% 10%,#0d94880f,transparent)}
 .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;position:relative}
 .hero h1{font-size:clamp(2.3rem,4.6vw,3.7rem);line-height:1.13;margin:20px 0 22px}
 .hero h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -69,14 +66,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#05080f88;backdro
 .hero-btns{display:flex;gap:14px;flex-wrap:wrap}
 .hero-badges{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
 .hero-visual{position:relative}
-.hero-img{border-radius:20px;overflow:hidden;position:relative;border:1px solid var(--line);box-shadow:0 40px 80px #00000055;aspect-ratio:4/3;background:var(--card2)}
-.hero-img img{width:100%;height:100%;object-fit:cover;opacity:.85}
-.hero-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,#05080f99)}
-.hero-card{position:absolute;left:-28px;bottom:34px;background:#0d1626ee;border:1px solid var(--line);border-radius:14px;padding:16px 20px;backdrop-filter:blur(10px);box-shadow:0 20px 50px #00000066;display:flex;gap:13px;align-items:center}
+.hero-img{border-radius:20px;overflow:hidden;position:relative;border:1px solid var(--line);box-shadow:0 30px 60px #0f172a1f;aspect-ratio:4/3;background:var(--card2)}
+.hero-img img{width:100%;height:100%;object-fit:cover}
+.hero-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,#0f172a4d)}
+.hero-card{position:absolute;left:-28px;bottom:34px;background:#fffffff5;border:1px solid var(--line);border-radius:14px;padding:16px 20px;backdrop-filter:blur(10px);box-shadow:0 18px 40px #0f172a1f;display:flex;gap:13px;align-items:center}
 .hero-card svg{width:34px;height:34px;flex-shrink:0}
 .hero-card .hc-t{font-size:.8rem;color:var(--mut)}
 .hero-card .hc-v{font-weight:700;font-size:1rem}
-.hero-card .hc-v .ok{color:var(--teal2)}
+.hero-card .hc-v .ok{color:var(--teal)}
 @media(max-width:940px){
   .hero-grid{grid-template-columns:1fr;gap:44px}
   .hero{padding-top:130px}
@@ -84,11 +81,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#05080f88;backdro
 }
 
 /* ── TRUST BAND */
-.band{border-top:1px solid #ffffff0a;border-bottom:1px solid #ffffff0a;background:#0a112055}
+.band{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .band-in{display:flex;gap:0;flex-wrap:wrap}
-.bcell{flex:1;min-width:170px;padding:26px 24px;border-right:1px solid #ffffff08;text-align:center}
+.bcell{flex:1;min-width:170px;padding:26px 24px;border-right:1px solid var(--line);text-align:center}
 .bcell:last-child{border-right:0}
-.bcell .bv{font-size:1.55rem;font-weight:700;font-family:Georgia,serif}
+.bcell .bv{font-size:1.55rem;font-weight:700}
 .bcell .bv .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .bcell .bl{color:var(--mut2);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
 
@@ -101,23 +98,23 @@ section{padding:100px 0}
 @media(max-width:940px){.fgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.fgrid{grid-template-columns:1fr}}
 .fcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 26px;transition:.3s;position:relative;overflow:hidden}
-.fcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad);opacity:0;transition:.3s}
-.fcard:hover{transform:translateY(-4px);border-color:#4f7dff55;background:var(--card2)}
+.fcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);opacity:0;transition:.3s}
+.fcard:hover{transform:translateY(-4px);border-color:#4f46e544;box-shadow:0 18px 40px #0f172a14}
 .fcard:hover::before{opacity:1}
-.fico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;background:#4f7dff12;border:1px solid #4f7dff30}
+.fico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;background:#4f46e510;border:1px solid #4f46e528}
 .fico svg{width:22px;height:22px}
 .fcard h4{margin-bottom:8px;font-size:1.05rem}
 .fcard p{color:var(--mut);font-size:.9rem}
 
 /* ── SÉCURITÉ */
-.sec-dark{background:linear-gradient(180deg,#080d18,#0a1224);border-top:1px solid #ffffff08;border-bottom:1px solid #ffffff08}
+.sec-alt{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
 @media(max-width:940px){.sec-grid{grid-template-columns:1fr}}
-.sec-img{border-radius:18px;overflow:hidden;border:1px solid var(--line);position:relative;aspect-ratio:16/11;background:var(--card)}
-.sec-img img{width:100%;height:100%;object-fit:cover;opacity:.8}
-.sec-img::after{content:'';position:absolute;inset:0;background:linear-gradient(200deg,#4f7dff22,transparent 45%,#05080f77)}
-.seclist{display:flex;flex-direction:column;gap:0;margin-top:30px}
-.srow{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #ffffff0a;align-items:flex-start}
+.sec-img{border-radius:18px;overflow:hidden;border:1px solid var(--line);position:relative;aspect-ratio:16/11;background:var(--card2);box-shadow:0 24px 50px #0f172a17}
+.sec-img img{width:100%;height:100%;object-fit:cover}
+.sec-img::after{content:'';position:absolute;inset:0;background:linear-gradient(200deg,#4f46e522,transparent 45%,#0f172a44)}
+.seclist{display:flex;flex-direction:column;margin-top:30px}
+.srow{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);align-items:flex-start}
 .srow:last-child{border-bottom:0}
 .srow svg{width:20px;height:20px;flex-shrink:0;margin-top:3px}
 .srow b{display:block;font-size:.95rem}
@@ -127,26 +124,26 @@ section{padding:100px 0}
 .cats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 @media(max-width:940px){.cats{grid-template-columns:1fr}}
 .cat{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;transition:.3s}
-.cat:hover{transform:translateY(-4px);border-color:#4f7dff55}
+.cat:hover{transform:translateY(-4px);border-color:#4f46e544;box-shadow:0 18px 40px #0f172a14}
 .cat-img{height:140px;position:relative;overflow:hidden}
-.cat-img img{width:100%;height:100%;object-fit:cover;opacity:.7}
-.cat-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#0d162633,#0d1626)}
-.cat-img .tag{position:absolute;top:14px;left:14px;z-index:2}
+.cat-img img{width:100%;height:100%;object-fit:cover}
+.cat-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#ffffff10,#ffffff40)}
+.cat-img .tag{position:absolute;top:14px;left:14px;z-index:2;background:#fffffff0;backdrop-filter:blur(4px)}
 .cat-body{padding:24px}
 .cat-body h4{font-size:1.15rem;margin-bottom:8px}
 .cat-body>p{color:var(--mut);font-size:.88rem;margin-bottom:16px}
 .cat-specs{list-style:none}
-.cat-specs li{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid #ffffff08;font-size:.83rem}
+.cat-specs li{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-size:.83rem}
 .cat-specs li span{color:var(--mut2)}
-.cat-specs li b{font-family:monospace;font-weight:600}
+.cat-specs li b{font-family:monospace;font-weight:600;color:var(--txt)}
 
 /* ── INTEGRATIONS */
 .dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 @media(max-width:940px){.dgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.dgrid{grid-template-columns:1fr}}
 .dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 22px;transition:.3s;display:block}
-.dcard:hover{transform:translateY(-4px);border-color:#2dd4bf66}
-.dcard .di{width:44px;height:44px;border-radius:12px;background:#2dd4bf12;border:1px solid #2dd4bf30;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.dcard:hover{transform:translateY(-4px);border-color:#0d948855;box-shadow:0 14px 34px #0f172a12}
+.dcard .di{width:44px;height:44px;border-radius:12px;background:#0d948810;border:1px solid #0d948828;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .dcard .di svg{width:22px;height:22px}
 .dcard h4{font-size:.98rem;margin-bottom:6px}
 .dcard p{color:var(--mut);font-size:.83rem}
@@ -155,12 +152,12 @@ section{padding:100px 0}
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
 @media(max-width:940px){.pgrid{grid-template-columns:1fr;max-width:440px;margin:0 auto}}
 .pcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:34px 30px;position:relative;display:flex;flex-direction:column;transition:.3s}
-.pcard:hover{transform:translateY(-4px)}
-.pcard.feat{border:1px solid #4f7dff88;background:linear-gradient(180deg,#101c36,#0d1626);box-shadow:0 24px 60px #4f7dff22}
-.pbadge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--grad);color:#05080f;font-size:.7rem;font-weight:700;padding:5px 16px;border-radius:99px;letter-spacing:.06em;text-transform:uppercase}
+.pcard:hover{transform:translateY(-4px);box-shadow:0 18px 44px #0f172a12}
+.pcard.feat{border:2px solid var(--ind);box-shadow:0 24px 60px #4f46e51f}
+.pbadge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--grad);color:#fff;font-size:.7rem;font-weight:700;padding:5px 16px;border-radius:99px;letter-spacing:.06em;text-transform:uppercase}
 .pname{font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);font-weight:700}
-.pprice{font-size:2.6rem;font-family:Georgia,serif;font-weight:600;margin:14px 0 4px}
-.pprice span{font-size:.95rem;color:var(--mut2);font-family:'Segoe UI',sans-serif}
+.pprice{font-size:2.6rem;font-weight:700;margin:14px 0 4px}
+.pprice span{font-size:.95rem;color:var(--mut2);font-weight:500}
 .pdesc{color:var(--mut2);font-size:.86rem;margin-bottom:24px}
 .plist{list-style:none;margin-bottom:30px;flex:1}
 .plist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:.9rem;color:var(--mut)}
@@ -168,11 +165,11 @@ section{padding:100px 0}
 .pcard .btn{justify-content:center}
 
 /* ── CTA / FOOTER */
-.cta{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:64px 40px;text-align:center;position:relative;overflow:hidden}
-.cta::before{content:'';position:absolute;width:600px;height:300px;background:#4f7dff18;filter:blur(90px);top:-100px;left:50%;transform:translateX(-50%)}
+.cta{background:#fff;border:1px solid var(--line);border-radius:22px;padding:64px 40px;text-align:center;position:relative;overflow:hidden;box-shadow:0 24px 60px #0f172a10}
+.cta::before{content:'';position:absolute;width:600px;height:300px;background:#4f46e512;filter:blur(90px);top:-100px;left:50%;transform:translateX(-50%)}
 .cta h2{font-size:clamp(1.7rem,3vw,2.4rem);margin-bottom:14px;position:relative}
 .cta p{color:var(--mut);margin-bottom:32px;position:relative}
-footer{border-top:1px solid #ffffff0a;padding:52px 0 30px;margin-top:100px}
+footer{background:#fff;border-top:1px solid var(--line);padding:52px 0 30px;margin-top:100px}
 .fgrid2{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;margin-bottom:44px}
 @media(max-width:860px){.fgrid2{grid-template-columns:1fr 1fr}}
 @media(max-width:540px){.fgrid2{grid-template-columns:1fr}}
@@ -180,9 +177,9 @@ footer h5{font-size:.8rem;text-transform:uppercase;letter-spacing:.14em;color:va
 footer ul{list-style:none}
 footer li{margin-bottom:10px}
 footer li a{color:var(--mut);font-size:.88rem;transition:.2s}
-footer li a:hover{color:var(--txt)}
+footer li a:hover{color:var(--ind)}
 .fbrand p{color:var(--mut2);font-size:.86rem;max-width:280px;margin-top:12px}
-.fbot{border-top:1px solid #ffffff08;padding-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;color:var(--mut2);font-size:.82rem}
+.fbot{border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;color:var(--mut2);font-size:.82rem}
 
 /* ── Reveal animation */
 .rv{opacity:0;transform:translateY(26px);transition:.7s cubic-bezier(.2,.7,.3,1)}
@@ -194,7 +191,7 @@ footer li a:hover{color:var(--txt)}
 
 <nav><div class="nav-in">
   <a class="logo" href="/">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="url(#lg)" stroke-width="1.8"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="url(#lg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4f7dff"/><stop offset="1" stop-color="#2dd4bf"/></linearGradient></defs></svg>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="url(#lg)" stroke-width="1.8"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="url(#lg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4f46e5"/><stop offset="1" stop-color="#0d9488"/></linearGradient></defs></svg>
     Storage<b>Hub</b>
   </a>
   <div class="nlinks" id="navLinks">
@@ -214,7 +211,7 @@ footer li a:hover{color:var(--txt)}
 </div></nav>
 
 <!-- ═══ HERO ═══ -->
-<header class="hero"><div class="orb o1"></div><div class="orb o2"></div>
+<header class="hero">
 <div class="wrap"><div class="hero-grid">
   <div>
     <span class="tag t-blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>API de stockage · Production</span>
@@ -235,7 +232,7 @@ footer li a:hover{color:var(--txt)}
       <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80" alt="Infrastructure de centre de données" loading="eager" onerror="this.style.display='none'"/>
     </div>
     <div class="hero-card">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="#2dd4bf" stroke-width="1.8"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="#2dd4bf" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="#0d9488" stroke-width="1.8"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="#0d9488" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div><div class="hc-t">État du service</div><div class="hc-v"><span class="ok">●</span> <span id="hcStatus">Opérationnel</span></div></div>
     </div>
   </div>
@@ -259,33 +256,33 @@ footer li a:hover{color:var(--txt)}
     <p>Tout ce qu'il faut pour servir des fichiers en production — sans construire votre propre infrastructure de stockage.</p>
   </div>
   <div class="fgrid">
-    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/><circle cx="12" cy="15" r="1.6" fill="#7ba1ff" stroke="none"/></svg></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/><circle cx="12" cy="15" r="1.6" fill="#4f46e5" stroke="none"/></svg></div>
       <h4>Signature HMAC-SHA256</h4><p>Chaque requête est signée avec votre secret et un timestamp à tolérance contrôlée — les requêtes falsifiées sont rejetées.</p></div>
-    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z"/><path d="M8.5 12l2.4 2.4 4.6-4.8"/></svg></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z"/><path d="M8.5 12l2.4 2.4 4.6-4.8"/></svg></div>
       <h4>Validation par magic bytes</h4><p>Le type réel de chaque fichier est vérifié par sa signature binaire. Exécutables et fichiers falsifiés : refusés.</p></div>
-    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11l-.8 8.5L19.5 10H13l.8-8z" transform="scale(.92) translate(1,1)"/><path d="M13 2L4.5 13.5H11l-.8 8.5L19.5 10H13l.8-8z"/></svg></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11l-.8 8.5L19.5 10H13l.8-8z"/></svg></div>
       <h4>URLs signées à durée limitée</h4><p>Partagez un accès temporaire sans exposer vos identifiants. La durée de vie est plafonnée par votre plan.</p></div>
-    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.8"/><path d="M3 17l5-4 4 3 4-3 5 4"/></svg></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.8"/><path d="M3 17l5-4 4 3 4-3 5 4"/></svg></div>
       <h4>Purge des métadonnées EXIF</h4><p>Les images sont ré-encodées : GPS, modèle d'appareil et horodatages sensibles sont supprimés automatiquement.</p></div>
-    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/><circle cx="18" cy="18" r="3.4"/><path d="M17 18l.9.9 1.7-1.8"/></svg></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/><circle cx="18" cy="18" r="3.4"/><path d="M17 18l.9.9 1.7-1.8"/></svg></div>
       <h4>Audit exhaustif</h4><p>Uploads, téléchargements et suppressions sont journalisés avec request_id et checksum SHA-256.</p></div>
-    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a1 1 0 011-1h14a1 1 0 011 1v14"/><path d="M4 19h16M4 19a1.5 1.5 0 010-3h16a1.5 1.5 0 010 3" transform="translate(0,-.5)"/><path d="M8 8h.01M8 11h.01M8 14h.01"/></svg></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a1 1 0 011-1h14a1 1 0 011 1v14"/><path d="M8 8h.01M8 11h.01M8 14h.01"/></svg></div>
       <h4>Observabilité intégrée</h4><p>Santé du service, métriques disque et compteurs par catégorie exposés au format Prometheus.</p></div>
   </div>
 </div></section>
 
 <!-- ═══ SÉCURITÉ ═══ -->
-<section class="sec-dark" id="security"><div class="wrap">
+<section class="sec-alt" id="security"><div class="wrap">
   <div class="sec-grid">
     <div class="rv">
       <div class="kick">Sécurité</div>
-      <h2 style="font-size:clamp(1.8rem,3.4vw,2.5rem);line-height:1.2;margin-bottom:14px">Vos fichiers sensibles sous contrôle strict</h2>
-      <p style="color:var(--mut)">Chaque couche de la plateforme applique une politique de sécurité explicite. Les documents privés ne sont jamais exposés publiquement.</p>
+      <h2 style="font-size:clamp(1.8rem,3.4vw,2.5rem);line-height:1.2;margin-bottom:14px">Chaque couche pensée pour la confiance</h2>
+      <p style="color:var(--mut)">Conçue pour les documents sensibles — pièces d'identité, reçus de paiement — avec une séparation stricte entre contenu public et privé.</p>
       <div class="seclist">
-        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Isolation par tenant</b><span>Chaque client ne voit que ses propres fichiers — aucun accès croisé possible.</span></div></div>
-        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Secrets par client</b><span>Chaque clé API possède son propre secret HMAC, révocable instantanément.</span></div></div>
-        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Téléchargements journalisés</b><span>Chaque accès à un document privé est tracé avec l'identité du demandeur.</span></div></div>
-        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Défense en profondeur</b><span>Validation MIME + signature binaire + quotas + traversal neutralisé.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Isolation par tenant</b><span>Chaque client ne voit que ses propres fichiers — aucun accès croisé possible.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Secrets par client</b><span>Chaque clé API possède son propre secret HMAC, révocable instantanément.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Téléchargements journalisés</b><span>Chaque accès à un document privé est tracé avec l'identité du demandeur.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Défense en profondeur</b><span>Validation MIME + signature binaire + quotas + path traversal neutralisé.</span></div></div>
       </div>
     </div>
     <div class="sec-img rv">
@@ -321,17 +318,17 @@ footer li a:hover{color:var(--txt)}
 </div></section>
 
 <!-- ═══ INTÉGRATIONS ═══ -->
-<section class="sec-dark" id="integrations"><div class="wrap">
+<section class="sec-alt" id="integrations"><div class="wrap">
   <div class="sec-head rv">
     <div class="kick">Intégrations</div>
     <h2>Conçue pour toutes vos plateformes</h2>
     <p>Guides et exemples de code prêts à l'emploi pour chaque environnement.</p>
   </div>
   <div class="dgrid">
-    <a class="dcard rv" href="/ui/docs.html#web"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="4" width="19" height="14" rx="2"/><path d="M2.5 8.5h19M6 6.4h.01M8.5 6.4h.01"/></svg></div><h4>Site web / SPA</h4><p>JavaScript, fetch, FormData et prévisualisations</p></a>
-    <a class="dcard rv" href="/ui/docs.html#mobile"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 18.5h3"/></svg></div><h4>Application mobile</h4><p>React Native &amp; Flutter — upload depuis la caméra</p></a>
-    <a class="dcard rv" href="/ui/docs.html#server"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="4" width="18" height="7" rx="1.6"/><rect x="3" y="13" width="18" height="7" rx="1.6"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h5M11 16.5h5"/></svg></div><h4>Backend serveur</h4><p>Python, Node.js, cURL — signature HMAC complète</p></a>
-    <a class="dcard rv" href="/ui/docs.html#errors"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a1.5 1.5 0 00-1.5 1.5v15A1.5 1.5 0 005 21h3M16 3h3a1.5 1.5 0 011.5 1.5v15A1.5 1.5 0 0119 21h-3"/><path d="M10 8l-3 4 3 4M14 8l3 4-3 4"/></svg></div><h4>Référence API</h4><p>Endpoints, codes d'erreur, limites par plan</p></a>
+    <a class="dcard rv" href="/ui/docs.html#web"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="4" width="19" height="14" rx="2"/><path d="M2.5 8.5h19M6 6.4h.01M8.5 6.4h.01"/></svg></div><h4>Site web / SPA</h4><p>JavaScript, fetch, FormData et prévisualisations</p></a>
+    <a class="dcard rv" href="/ui/docs.html#mobile"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.9" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 18.5h3"/></svg></div><h4>Application mobile</h4><p>React Native &amp; Flutter — upload depuis la caméra</p></a>
+    <a class="dcard rv" href="/ui/docs.html#server"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="4" width="18" height="7" rx="1.6"/><rect x="3" y="13" width="18" height="7" rx="1.6"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h5M11 16.5h5"/></svg></div><h4>Backend serveur</h4><p>Python, Node.js, cURL — signature HMAC complète</p></a>
+    <a class="dcard rv" href="/ui/docs.html#errors"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a1.5 1.5 0 00-1.5 1.5v15A1.5 1.5 0 005 21h3M16 3h3a1.5 1.5 0 011.5 1.5v15A1.5 1.5 0 0119 21h-3"/><path d="M10 8l-3 4 3 4M14 8l3 4-3 4"/></svg></div><h4>Référence API</h4><p>Endpoints, codes d'erreur, limites par plan</p></a>
   </div>
 </div></section>
 
@@ -348,10 +345,10 @@ footer li a:hover{color:var(--txt)}
       <div class="pprice">0€<span> / mois</span></div>
       <div class="pdesc">Pour tester et prototyper</div>
       <ul class="plist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>500 MB</b> de stockage</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>1 clé API</b> active</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>60 s</b></span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support communautaire</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>500 MB</b> de stockage</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>1 clé API</b> active</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>60 s</b></span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support communautaire</span></li>
       </ul>
       <a class="btn b-gho" href="/ui/dashboard.html">Commencer</a>
     </div>
@@ -361,10 +358,10 @@ footer li a:hover{color:var(--txt)}
       <div class="pprice">19€<span> / mois</span></div>
       <div class="pdesc">Pour les produits en production</div>
       <ul class="plist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>50 GB</b> de stockage</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>3 clés API</b> actives</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>5 min</b></span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support prioritaire</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>50 GB</b> de stockage</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>3 clés API</b> actives</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>5 min</b></span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support prioritaire</span></li>
       </ul>
       <a class="btn b-pri" href="/ui/dashboard.html">Choisir Pro</a>
     </div>
@@ -373,10 +370,10 @@ footer li a:hover{color:var(--txt)}
       <div class="pprice">79€<span> / mois</span></div>
       <div class="pdesc">Pour les plateformes à fort volume</div>
       <ul class="plist">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>500 GB</b> de stockage</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>10 clés API</b> actives</span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>1 heure</b></span></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support dédié &amp; SLA</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>500 GB</b> de stockage</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>10 clés API</b> actives</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>1 heure</b></span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support dédié &amp; SLA</span></li>
       </ul>
       <a class="btn b-gho" href="/ui/dashboard.html">Choisir Business</a>
     </div>
@@ -396,7 +393,7 @@ footer li a:hover{color:var(--txt)}
 <footer><div class="wrap">
   <div class="fgrid2">
     <div class="fbrand">
-      <a class="logo" href="/"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="url(#lg2)" stroke-width="1.8"/><defs><linearGradient id="lg2" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4f7dff"/><stop offset="1" stop-color="#2dd4bf"/></linearGradient></defs></svg> Storage<b>Hub</b></a>
+      <a class="logo" href="/"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="url(#lg2)" stroke-width="1.8"/><defs><linearGradient id="lg2" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4f46e5"/><stop offset="1" stop-color="#0d9488"/></linearGradient></defs></svg> Storage<b>Hub</b></a>
       <p>API de stockage de fichiers sécurisée pour les applications modernes. Hébergé et exploité par WIB Company.</p>
     </div>
     <div><h5>Produit</h5><ul>
