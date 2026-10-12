@@ -101,7 +101,13 @@ async def get_auth_context(
 
     # HMAC verification (production mode)
     if x_timestamp and x_signature:
-        body = await request.body()
+        try:
+            body = await request.body()
+        except RuntimeError:
+            # Multipart uploads: FastAPI consumes the stream while parsing
+            # form fields before this dependency runs. The client signs
+            # sha256(b"") for uploads, so treat the body as empty.
+            body = b""
         if not _verify_hmac_signature(x_api_key, x_timestamp, x_signature, body):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

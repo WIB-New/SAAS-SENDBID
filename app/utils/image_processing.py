@@ -6,6 +6,7 @@ SAAS SENDBID — Image processing utilities
 import io
 from typing import Optional
 
+from fastapi import HTTPException
 from PIL import Image
 
 
@@ -48,8 +49,8 @@ def strip_exif_and_reencode(content: bytes, mime_type: str) -> bytes:
         return cleaned
 
     except Exception as e:
-        # If processing fails, raise — don't silently pass corrupted files
-        raise ValueError(f"Image processing failed: {e}")
+        # If processing fails, reject — don't silently pass corrupted files
+        raise HTTPException(status_code=400, detail=f"Image processing failed: {e}")
 
 
 def get_image_dimensions(content: bytes) -> Optional[tuple[int, int]]:
