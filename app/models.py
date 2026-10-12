@@ -22,10 +22,59 @@ class FileCategory(str, enum.Enum):
     receipts = "receipts"
 
 
+class Client(Base):
+    """Compte client SaaS — chaque client possède ses propres credentials API."""
+    __tablename__ = "clients"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    plan: Mapped[str] = mapped_column(String(30), nullable=False, default="free")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    api_keys: Mapped[list["ApiKey"]] = relationship(
+        "ApiKey", back_populates="client", lazy="select"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Client {self.email} plan={self.plan}>"
+
+
+class ApiKey(Base):
+    """Credential API d'un client — paire api_key + hmac_secret."""
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    client_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("clients.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False, default="Default key")
+    api_key: Mapped[str] = mapped_column(String(80), nullable=False, unique=True, index=True)
+    hmac_secret: Mapped[str] = mapped_column(String(128), nullable=False)
+    plan: Mapped[str] = mapped_column(String(30), nullable=False, default="free")
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    client: Mapped["Client"] = relationship("Client", back_populates="api_keys")
+
+    def __repr__(self) -> str:
+        return f"<ApiKey {self.api_key[:12]}… client={self.client_id}>"
+
+
 class StoredFile(Base):
     __tablename__ = "stored_files"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    client_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("clients.id"), nullable=True, index=True
+    )
     owner_user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     original_filename: Mapped[str] = mapped_column(String(512), nullable=True)

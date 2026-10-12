@@ -15,12 +15,12 @@ from typing import Optional
 import aiofiles
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, File, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
 from app.auth import AuthContext, get_auth_context
-from app.config import settings
+from app.config import get_plan, settings
 from app.database import get_db
 from app.utils.audit import log_access
 from app.utils.file_validation import validate_upload, prevent_path_traversal
@@ -55,6 +55,26 @@ async def upload_file(
     # Validate & read file
     content, mime_type = await validate_upload(file, category)
 
+    # Tenant quota enforcement (client API keys only — master key is unbounded)
+    if auth.client_id:
+        plan = get_plan(auth.plan)
+        limit_bytes = plan["storage_mb"] * 1024 * 1024
+        result = await db.execute(
+            select(func.coalesce(func.sum(models.StoredFile.size_bytes), 0)).where(
+                models.StoredFile.client_id == auth.client_id,
+                models.StoredFile.is_deleted == False,
+            )
+        )
+        used = result.scalar() or 0
+        if used + len(content) > limit_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Storage quota exceeded for plan '{plan['name']}' "
+                    f"({plan['storage_mb']} MB). Upgrade via POST /v1/accounts/plan."
+                ),
+            )
+
     # Strip EXIF metadata for images
     content = strip_exif_and_reencode(content, mime_type)
 
@@ -69,6 +89,7 @@ async def upload_file(
     # Save metadata to DB
     stored_file = models.StoredFile(
         id=file_id,
+        client_id=auth.client_id,
         owner_user_id=effective_owner,
         category=category,
         original_filename=original_name[:512] if original_name else None,
@@ -114,10 +135,14 @@ async def list_files(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ):
-    """List files owned by the authenticated user (or all files for admin)."""
+    """List files: tenant-scoped for client keys, owner-scoped per end-user."""
     query = select(models.StoredFile).where(models.StoredFile.is_deleted == False)
 
-    if not auth.is_admin:
+    if auth.client_id:
+        query = query.where(models.StoredFile.client_id == auth.client_id)
+        if not auth.is_admin:
+            query = query.where(models.StoredFile.owner_user_id == auth.user_id)
+    elif not auth.is_admin:
         query = query.where(models.StoredFile.owner_user_id == auth.user_id)
 
     if category:
@@ -213,12 +238,19 @@ async def get_signed_url(
     stored_file = await _get_file_or_404(db, file_id)
     _check_access(auth, stored_file)
 
-    signed_url, expires_at = generate_signed_url(file_id, ttl)
+    # Cap TTL at the plan's maximum (master key is unbounded)
+    if auth.client_id:
+        max_ttl = get_plan(auth.plan).get("signed_url_max_ttl", 60)
+        effective_ttl = min(ttl, max_ttl) if ttl else None
+    else:
+        effective_ttl = ttl
+
+    signed_url, expires_at = generate_signed_url(file_id, effective_ttl)
     return schemas.SignedURLResponse(
         file_id=file_id,
         signed_url=signed_url,
         expires_at=expires_at,
-        ttl_seconds=ttl or settings.signed_url_ttl,
+        ttl_seconds=effective_ttl or settings.signed_url_ttl,
     )
 
 
@@ -296,7 +328,7 @@ async def _get_file_or_404(db: AsyncSession, file_id: str) -> models.StoredFile:
 
 
 def _check_access(auth: AuthContext, stored_file: models.StoredFile):
-    if not auth.can_access_file(stored_file.owner_user_id):
+    if not auth.can_access_file(stored_file.owner_user_id, stored_file.client_id):
         raise HTTPException(
             status_code=403,
             detail="Access denied: you do not own this file",

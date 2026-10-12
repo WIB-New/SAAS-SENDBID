@@ -66,4 +66,37 @@ class Settings(BaseSettings):
         return self.app_env == "production"
 
 
+# ── Plans d'abonnement (quota par client) ──
+PLANS = {
+    "free": {
+        "name": "Gratuit",
+        "price_monthly": 0,
+        "storage_mb": 500,
+        "max_keys": 1,
+        "signed_url_max_ttl": 60,
+        "support": "Community",
+    },
+    "pro": {
+        "name": "Pro",
+        "price_monthly": 19,
+        "storage_mb": 50 * 1024,
+        "max_keys": 3,
+        "signed_url_max_ttl": 300,
+        "support": "Email 24h",
+    },
+    "business": {
+        "name": "Business",
+        "price_monthly": 79,
+        "storage_mb": 500 * 1024,
+        "max_keys": 10,
+        "signed_url_max_ttl": 3600,
+        "support": "Prioritaire + SLA",
+    },
+}
+
+
+def get_plan(plan_id: str) -> dict:
+    return PLANS.get(plan_id, PLANS["free"])
+
+
 settings = Settings()

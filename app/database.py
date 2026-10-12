@@ -1,6 +1,7 @@
 """
 SAAS SENDBID — Database setup (SQLAlchemy async)
 """
+from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -39,7 +40,22 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables on startup."""
+    """Create all tables on startup + apply lightweight column migrations."""
     async with engine.begin() as conn:
         from app import models  # noqa: F401 — triggers model registration
         await conn.run_sync(Base.metadata.create_all)
+
+        # create_all never alters existing tables — add missing columns
+        def _migrate(sync_conn):
+            insp = inspect(sync_conn)
+            cols = {c["name"] for c in insp.get_columns("stored_files")}
+            if "client_id" not in cols:
+                sync_conn.execute(
+                    text("ALTER TABLE stored_files ADD COLUMN client_id VARCHAR(36)")
+                )
+            sync_conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_stored_files_client_id "
+                     "ON stored_files (client_id)")
+            )
+
+        await conn.run_sync(_migrate)

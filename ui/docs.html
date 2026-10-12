@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Documentation — StorageHub API</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Cpath d='M10 21a4.5 4.5 0 0 1-.9-8.9 5.5 5.5 0 0 1 10.7-1.3A4.7 4.7 0 0 1 22 20.4V21H10z' fill='white'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#05070d; --bg2:#0a0f1c; --card:#0d1424; --card2:#111a30;
+  --line:rgba(148,163,255,.12); --line2:rgba(148,163,255,.2);
+  --blue:#3b82f6; --blue2:#60a5fa; --cyan:#22d3ee; --green:#34d399;
+  --amber:#fbbf24; --red:#f87171;
+  --text:#f0f4ff; --t2:#94a3c4; --t3:#5b6b95;
+  --mono:'JetBrains Mono',monospace; --r:16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+a{color:inherit;text-decoration:none}
+code{font-family:var(--mono);font-size:.9em;color:var(--cyan)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+
+nav{position:fixed;inset:0 0 auto;z-index:50;backdrop-filter:blur(16px);
+  background:rgba(5,7,13,.78);border-bottom:1px solid var(--line)}
+.nv{display:flex;align-items:center;justify-content:space-between;height:66px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16.5px}
+.brand i{width:33px;height:33px;border-radius:9px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--blue),#1d4ed8)}
+.nv-r{display:flex;gap:12px}
+.btn{display:inline-flex;align-items:center;padding:9px 18px;border-radius:10px;
+  font-weight:600;font-size:13.5px;border:1px solid var(--line2);background:var(--card);color:var(--text);transition:.2s}
+.btn:hover{border-color:var(--blue)}
+.btn.pri{background:linear-gradient(135deg,var(--blue),#2563eb);border:0;color:#fff}
+
+.layout{display:grid;grid-template-columns:230px 1fr;gap:48px;padding-top:66px}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.side{display:none}}
+.side{position:sticky;top:92px;align-self:start;height:calc(100vh - 92px);overflow:auto;padding:26px 0}
+.side .sg{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);
+  font-weight:800;margin:22px 0 8px;padding-left:12px}
+.side a{display:block;padding:8px 12px;border-radius:9px;font-size:13.5px;color:var(--t2);
+  border-left:2px solid transparent}
+.side a:hover,.side a.on{color:var(--text);background:var(--card);border-left-color:var(--blue)}
+
+.doc{padding:44px 0 90px;max-width:820px}
+h1{font-size:38px;font-weight:900;letter-spacing:-.03em;margin-bottom:14px}
+h2{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:52px 0 16px;padding-top:20px;
+  border-top:1px solid var(--line)}
+h2:first-of-type{border-top:0}
+h3{font-size:17px;font-weight:700;margin:30px 0 10px}
+p.lead{font-size:17px;color:var(--t2);margin-bottom:20px}
+p,li{color:var(--t2);font-size:15px}
+ul{margin:10px 0 10px 22px}
+.note{background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.3);border-radius:12px;
+  padding:16px 18px;font-size:13.5px;color:var(--t2);margin:18px 0}
+.note.warn{background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.3)}
+.note b{color:var(--text)}
+
+pre{background:#090d18;border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+  font-family:var(--mono);font-size:12.6px;line-height:1.8;overflow-x:auto;margin:16px 0;
+  color:#c7cde4}
+pre .c{color:var(--t3)}pre .s{color:var(--amber)}pre .b{color:var(--blue2)}
+pre .g{color:var(--green)}pre .k{color:#f472b6}
+
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);
+  padding:10px 12px;border-bottom:1px solid var(--line2);font-weight:700}
+td{padding:11px 12px;border-bottom:1px solid var(--line);color:var(--t2);vertical-align:top}
+td code{white-space:nowrap}
+td:first-child{font-family:var(--mono);font-size:12.5px;color:var(--blue2)}
+
+.badge-m{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px}
+.get{background:rgba(52,211,153,.12);color:var(--green)}
+.post{background:rgba(59,130,246,.15);color:var(--blue2)}
+.del{background:rgba(248,113,113,.12);color:var(--red)}
+.step{display:flex;gap:16px;margin:20px 0}
+.step .n{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#1d4ed8);
+  display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0}
+.step .sc{flex:1}
+.step .sc b{display:block;margin-bottom:4px}
+footer{border-top:1px solid var(--line);padding:36px 0;color:var(--t3);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap nv">
+  <a class="brand" href="/">
+    <i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M7 17.5a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.2 4.3 4.3 0 0 1 18 17v.5H7z"/></svg></i>
+    StorageHub <span style="color:var(--t3);font-weight:500;font-size:13px">/ Docs</span>
+  </a>
+  <div class="nv-r">
+    <a class="btn" href="/docs">Swagger ↗</a>
+    <a class="btn pri" href="/ui/dashboard.html">Dashboard</a>
+  </div>
+</div></nav>
+
+<div class="wrap layout">
+  <aside class="side">
+    <div class="sg">Démarrage</div>
+    <a href="#start">Quickstart</a>
+    <a href="#auth">Authentification HMAC</a>
+    <a href="#errors">Codes d'erreur</a>
+    <div class="sg">Intégrations</div>
+    <a href="#web">Site web / JavaScript</a>
+    <a href="#mobile">Mobile · RN &amp; Flutter</a>
+    <a href="#server">Serveur · Python &amp; Node</a>
+    <a href="#django">Django SDK</a>
+    <div class="sg">Référence</div>
+    <a href="#endpoints">Endpoints</a>
+    <a href="#limits">Limites &amp; plans</a>
+  </aside>
+
+  <main class="doc">
+    <h1>Documentation StorageHub</h1>
+    <p class="lead">Intégrez le stockage sécurisé de fichiers dans n'importe quelle
+    application — site web, app mobile ou backend — en quelques minutes.</p>
+
+    <div class="note">Base URL : <b>https://storagehub.aiforge.world</b> ·
+    Référence interactive : <a href="/docs" style="color:var(--blue2)">Swagger UI</a> ·
+    <a href="/redoc" style="color:var(--blue2)">ReDoc</a></div>
+
+    <!-- ═══ QUICKSTART ═══ -->
+    <h2 id="start">Quickstart — 3 étapes</h2>
+    <div class="step"><div class="n">1</div><div class="sc">
+      <b>Créez votre compte</b>
+      <p>Rendez-vous sur le <a href="/ui/dashboard.html#register" style="color:var(--blue2)">dashboard</a> ou appelez
+      <code>POST /v1/accounts/register</code>. Vous recevez instantanément
+      <code>api_key</code> + <code>hmac_secret</code> — à conserver en lieu sûr.</p>
+    </div></div>
+    <div class="step"><div class="n">2</div><div class="sc">
+      <b>Configurez vos variables</b>
+<pre>STORAGE_BASE_URL=<span class="s">https://storagehub.aiforge.world</span>
+STORAGE_API_KEY=<span class="s">shk_…</span>
+STORAGE_HMAC_SECRET=<span class="s">…</span></pre>
+    </div></div>
+    <div class="step"><div class="n">3</div><div class="sc">
+      <b>Uploadez votre premier fichier</b>
+      <p>Choisissez votre plateforme ci-dessous — chaque exemple inclut la signature HMAC complète.</p>
+    </div></div>
+
+    <!-- ═══ AUTH ═══ -->
+    <h2 id="auth">Authentification — signature HMAC-SHA256</h2>
+    <p>Toutes les requêtes <code>/v1/</code> exigent ces headers. En production,
+    la signature est <b>obligatoire</b>.</p>
+    <table>
+      <tr><th>Header</th><th>Description</th></tr>
+      <tr><td>X-API-Key</td><td>Votre clé publique <code>shk_…</code></td></tr>
+      <tr><td>X-Timestamp</td><td>Timestamp Unix actuel (tolérance ±30 s, anti-rejeu)</td></tr>
+      <tr><td>X-Signature</td><td><code>HMAC_SHA256(hmac_secret, api_key + ":" + timestamp + ":" + sha256(body))</code></td></tr>
+      <tr><td>X-User-Id</td><td>ID de l'utilisateur final dans <i>votre</i> système (propriétaire du fichier)</td></tr>
+      <tr><td>X-User-Role</td><td><code>user</code> · <code>admin</code> · <code>kyc_agent</code></td></tr>
+    </table>
+    <div class="note warn"><b>Multipart :</b> pour les uploads <code>multipart/form-data</code>,
+    signez avec un corps vide : <code>sha256(b"")</code>. Le body multipart n'est pas inclus dans la signature.</div>
+    <div class="note"><b>Ne signez jamais côté navigateur public.</b> Pour un site web ou une app
+    mobile, faites le upload via votre propre backend qui détient le secret — ou utilisez
+    la route publique avatars en lecture seule.</div>
+
+    <!-- ═══ WEB ═══ -->
+    <h2 id="web">🌐 Site web / JavaScript</h2>
+    <p>Le front-end ne doit <b>jamais</b> connaître votre <code>hmac_secret</code>.
+    Pattern recommandé : votre backend génère les headers signés, le navigateur uploade.</p>
+    <h3>Option A — via votre backend (recommandé)</h3>
+<pre><span class="c">// 1) Votre backend appelle l'API avec HMAC et retourne l'URL publique</span>
+<span class="c">// 2) Le navigateur n'a besoin d'aucun secret</span>
+
+<span class="b">const</span> form = <span class="b">new</span> FormData();
+form.append(<span class="s">"avatar"</span>, fileInput.files[0]);
+
+<span class="b">const</span> res = <span class="k">await</span> fetch(<span class="s">"/api/my-backend/upload-avatar"</span>, {
+  method: <span class="s">"POST"</span>, body: form });
+<span class="b">const</span> { url } = <span class="k">await</span> res.json();
+img.src = url; <span class="c">// https://storagehub.aiforge.world/v1/public/avatars/…</span></pre>
+    <h3>Option B — lire les avatars publics (aucun secret requis)</h3>
+<pre><span class="c">// Les avatars sont publics — pas d'auth nécessaire</span>
+<span class="b">&lt;img</span> src=<span class="s">"https://storagehub.aiforge.world/v1/public/avatars/{file_id}"</span>
+     alt=<span class="s">"avatar"</span> <span class="b">/&gt;</span></pre>
+
+    <!-- ═══ MOBILE ═══ -->
+    <h2 id="mobile">📱 Application mobile</h2>
+    <p>Même règle : le secret HMAC vit sur <b>votre serveur</b>, pas dans l'APK.
+    L'app appelle votre backend, qui relaie vers StorageHub.</p>
+    <h3>React Native — upload via votre backend</h3>
+<pre><span class="k">const</span> data = <span class="b">new</span> FormData();
+data.append(<span class="s">"file"</span>, {
+  uri: photo.uri, <span class="c">// camera roll / camera</span>
+  name: <span class="s">"avatar.jpg"</span>,
+  type: <span class="s">"image/jpeg"</span>,
+});
+data.append(<span class="s">"category"</span>, <span class="s">"avatars"</span>);
+
+<span class="k">await</span> fetch(<span class="s">"https://api.votreapp.com/storage/upload"</span>, {
+  method: <span class="s">"POST"</span>, body: data,
+  headers: { <span class="s">"Content-Type"</span>: <span class="s">"multipart/form-data"</span> },
+});</pre>
+    <h3>Flutter (Dart)</h3>
+<pre><span class="b">final</span> req = http.MultipartRequest(
+  <span class="s">'POST'</span>, Uri.parse(<span class="s">'https://api.votreapp.com/storage/upload'</span>));
+req.files.add(<span class="k">await</span> http.MultipartFile.fromPath(<span class="s">'file'</span>, path));
+req.fields[<span class="s">'category'</span>] = <span class="s">'avatars'</span>;
+<span class="b">final</span> res = <span class="k">await</span> req.send();</pre>
+    <div class="note"><b>Accès aux fichiers privés depuis le mobile :</b> demandez une
+    URL signée à votre backend (<code>GET /v1/files/{id}/signed</code>), puis chargez
+    directement le lien — il expire automatiquement.</div>
+
+    <!-- ═══ SERVER ═══ -->
+    <h2 id="server">⚙️ Backend serveur</h2>
+    <h3>Python — signature + upload complet</h3>
+<pre><span class="b">import</span> hashlib, hmac, time, requests
+
+BASE   = <span class="s">"https://storagehub.aiforge.world"</span>
+API_KEY    = <span class="s">"shk_…"</span>
+HMAC_SECRET = <span class="s">"…"</span>
+
+<span class="b">def</span> <span class="g">headers</span>(user_id=<span class="s">"user-1"</span>, role=<span class="s">"user"</span>, body=<span class="b">b""</span>):
+    ts  = <span class="b">str</span>(<span class="b">int</span>(time.time()))
+    msg = <span class="s">f"{API_KEY}:{ts}:"</span> + hashlib.sha256(body).hexdigest()
+    sig = hmac.new(HMAC_SECRET.encode(), msg.encode(), hashlib.sha256).hexdigest()
+    <span class="b">return</span> {<span class="s">"X-API-Key"</span>: API_KEY, <span class="s">"X-Timestamp"</span>: ts,
+            <span class="s">"X-Signature"</span>: sig, <span class="s">"X-User-Id"</span>: user_id,
+            <span class="s">"X-User-Role"</span>: role}
+
+<span class="c"># Upload (body signé = sha256(b"") pour multipart)</span>
+r = requests.post(BASE + <span class="s">"/v1/files"</span>, headers=headers(),
+    files={<span class="s">"file"</span>: (<span class="s">"cni.pdf"</span>, <span class="b">open</span>(<span class="s">"cni.pdf"</span>, <span class="s">"rb"</span>))},
+    data={<span class="s">"category"</span>: <span class="s">"kyc"</span>})
+file_id = r.json()[<span class="s">"file_id"</span>]
+
+<span class="c"># URL signée temporaire</span>
+r = requests.get(BASE + <span class="s">f"/v1/files/{file_id}/signed"</span>,
+                 headers=headers(role=<span class="s">"admin"</span>))
+signed_url = r.json()[<span class="s">"signed_url"</span>]  <span class="c"># expire selon le plan</span></pre>
+
+    <h3>Node.js</h3>
+<pre><span class="b">const</span> crypto = <span class="b">require</span>(<span class="s">"crypto"</span>);
+<span class="b">const</span> BASE = <span class="s">"https://storagehub.aiforge.world"</span>;
+
+<span class="b">function</span> <span class="g">headers</span>(userId, role = <span class="s">"user"</span>, body = Buffer.alloc(0)) {
+  <span class="b">const</span> ts = <span class="g">Math.floor</span>(Date.now()/1000).toString();
+  <span class="b">const</span> bodyHash = crypto.createHash(<span class="s">"sha256"</span>).update(body).digest(<span class="s">"hex"</span>);
+  <span class="b">const</span> sig = crypto.createHmac(<span class="s">"sha256"</span>, process.env.STORAGE_HMAC_SECRET)
+    .update(<span class="s">`${process.env.STORAGE_API_KEY}:${ts}:${bodyHash}`</span>).digest(<span class="s">"hex"</span>);
+  <span class="b">return</span> { <span class="s">"X-API-Key"</span>: process.env.STORAGE_API_KEY,
+    <span class="s">"X-Timestamp"</span>: ts, <span class="s">"X-Signature"</span>: sig,
+    <span class="s">"X-User-Id"</span>: userId, <span class="s">"X-User-Role"</span>: role };
+}</pre>
+
+    <h3>cURL — test rapide</h3>
+<pre><span class="c"># calculez sig = HMAC(secret, "KEY:TS:sha256(body)")</span>
+curl -X POST https://storagehub.aiforge.world/v1/files \
+  -H <span class="s">"X-API-Key: shk_…"</span> -H <span class="s">"X-Timestamp: $TS"</span> \
+  -H <span class="s">"X-Signature: $SIG"</span> -H <span class="s">"X-User-Id: user-1"</span> \
+  -F <span class="s">"file=@avatar.png"</span> -F <span class="s">"category=avatars"</span></pre>
+
+    <!-- ═══ DJANGO ═══ -->
+    <h2 id="django">🐍 SDK Django clé-en-main</h2>
+    <p>Le module <code>django_integration/storage_client.py</code> gère la signature
+    automatiquement :</p>
+<pre><span class="b">from</span> django_integration.storage_client <span class="b">import</span> StorageClient
+
+client = <span class="g">StorageClient</span>(
+    base_url=<span class="s">"https://storagehub.aiforge.world"</span>,
+    api_key=settings.STORAGE_API_KEY,
+    hmac_secret=settings.STORAGE_HMAC_SECRET,
+)
+
+<span class="c"># Dans une vue</span>
+res = client.upload_avatar(request.FILES[<span class="s">"avatar"</span>],
+                           owner_user_id=<span class="b">str</span>(request.user.id))
+profile.avatar_url = res[<span class="s">"url"</span>]
+
+<span class="c"># Document sensible → lien temporaire</span>
+url = client.get_file_url(file_id, user_id=<span class="b">str</span>(request.user.id), ttl=<span class="g">60</span>)</pre>
+
+    <!-- ═══ ERRORS ═══ -->
+    <h2 id="errors">Codes d'erreur</h2>
+    <table>
+      <tr><th>HTTP</th><th>Cas</th><th>Solution</th></tr>
+      <tr><td>400</td><td>Fichier vide, MIME non autorisé, exécutable, catégorie invalide</td><td>Vérifiez format et catégorie</td></tr>
+      <tr><td>401</td><td>Header <code>X-API-Key</code> manquant</td><td>Ajoutez la clé</td></tr>
+      <tr><td>403</td><td>Clé invalide/révoquée, signature HMAC incorrecte, accès refusé</td><td>Vérifiez signature &amp; propriété du fichier</td></tr>
+      <tr><td>404</td><td>Fichier introuvable ou supprimé</td><td>Vérifiez le file_id</td></tr>
+      <tr><td>413</td><td>Fichier trop grand ou quota plan dépassé</td><td>Réduisez la taille ou changez de plan</td></tr>
+      <tr><td>422</td><td>Validation du formulaire</td><td>Champs <code>file</code> + <code>category</code> requis</td></tr>
+    </table>
+
+    <!-- ═══ ENDPOINTS ═══ -->
+    <h2 id="endpoints">Référence des endpoints</h2>
+    <table>
+      <tr><th>Méthode</th><th>Route</th><th>Description</th></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/accounts/register</td><td>Créer un compte → credentials API</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/accounts/login</td><td>Session JWT dashboard</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/accounts/me</td><td>Profil + usage + clés</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/accounts/keys</td><td>Nouvelle clé API</td></tr>
+      <tr><td><span class="badge-m del">DELETE</span></td><td>/v1/accounts/keys/{id}</td><td>Révoquer une clé</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files</td><td>Upload (multipart: file, category, owner_user_id?)</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files</td><td>Lister les fichiers</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}</td><td>Stream authentifié</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/meta</td><td>Métadonnées JSON</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/signed</td><td>Générer une URL signée</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/download</td><td>Download via URL signée</td></tr>
+      <tr><td><span class="badge-m del">DELETE</span></td><td>/v1/files/{id}</td><td>Suppression logique</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/public/avatars/{id}</td><td>Avatar public (sans auth)</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/health · /v1/metrics</td><td>Monitoring</td></tr>
+    </table>
+
+    <!-- ═══ LIMITS ═══ -->
+    <h2 id="limits">Limites par plan</h2>
+    <table>
+      <tr><th>Plan</th><th>Stockage</th><th>Clés API</th><th>TTL URL signée max</th></tr>
+      <tr><td>Gratuit</td><td>500 MB</td><td>1</td><td>60 s</td></tr>
+      <tr><td>Pro — 19€/mois</td><td>50 GB</td><td>3</td><td>5 min</td></tr>
+      <tr><td>Business — 79€/mois</td><td>500 GB</td><td>10</td><td>1 h</td></tr>
+    </table>
+    <div class="note">Quotas appliqués côté serveur à chaque upload. Changez de plan
+    via <code>POST /v1/accounts/plan</code> ou le dashboard.</div>
+  </main>
+</div>
+
+<footer>© 2026 WIB Company — SendBID / PayBID · <a href="/" style="color:var(--blue2)">StorageHub</a></footer>
+
+<script>
+// scroll-spy
+const links=[...document.querySelectorAll('.side a')];
+const heads=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+addEventListener('scroll',()=>{
+  let cur=heads[0];
+  for(const h of heads) if(h.getBoundingClientRect().top<140) cur=h;
+  links.forEach(a=>a.classList.toggle('on', a.getAttribute('href')==='#'+cur.id));
+},{passive:true});
+</script>
+</body>
+</html>

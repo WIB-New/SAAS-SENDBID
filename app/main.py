@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import init_db
-from app.routers import files, health, public
+from app.routers import accounts, files, health, public
 from app.schemas import ApiError, ErrorCode
 
 _start_time = time.time()
@@ -75,6 +75,7 @@ app.add_middleware(
 
 # ── Routers
 app.include_router(files.router)
+app.include_router(accounts.router)
 app.include_router(health.router)
 app.include_router(public.router)
 

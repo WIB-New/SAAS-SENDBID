@@ -3,503 +3,470 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>StorageHub — Stockage de fichiers sécurisé · SendBID</title>
-<meta name="description" content="StorageHub — le microservice de stockage sécurisé de l'écosystème SendBID/PayBID. Uploads validés, URLs signées, audit complet, HMAC-SHA256." />
-<meta property="og:title" content="StorageHub — Storage Service" />
-<meta property="og:description" content="API de stockage sécurisée — avatars publics via CDN, documents KYC et reçus privés avec audit trail." />
+<title>StorageHub — Cloud Storage API pour SendBID</title>
+<meta name="description" content="StorageHub — API de stockage sécurisé en SaaS. Comptes self-service, clés API par client, URLs signées, audit complet. Intégrez en minutes sur web, mobile ou serveur." />
+<meta property="og:title" content="StorageHub — Secure Storage API" />
+<meta property="og:description" content="API de stockage sécurisée en SaaS — créez un compte, générez vos clés, uploadez." />
 <meta property="og:type" content="website" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c6fff'/%3E%3Cpath d='M10 21a4.5 4.5 0 0 1-.9-8.9 5.5 5.5 0 0 1 10.7-1.3A4.7 4.7 0 0 1 22 20.4V21H10z' fill='white'/%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Cpath d='M10 21a4.5 4.5 0 0 1-.9-8.9 5.5 5.5 0 0 1 10.7-1.3A4.7 4.7 0 0 1 22 20.4V21H10z' fill='white'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
 :root{
-  --bg:#07090f; --bg2:#0b0e18; --surface:rgba(255,255,255,.03);
-  --surface2:rgba(255,255,255,.05); --border:rgba(255,255,255,.09);
-  --border2:rgba(255,255,255,.14);
-  --purple:#7c6fff; --purple2:#a78bfa; --teal:#4ecdc4; --green:#3ddc97;
-  --text:#eef1fa; --text2:#9aa3c0; --text3:#5c6490;
-  --mono:'JetBrains Mono',monospace;
-  --r:16px; --ease:.25s cubic-bezier(.4,0,.2,1);
+  --bg:#05070d; --bg2:#0a0f1c; --card:#0d1424; --card2:#111a30;
+  --line:rgba(148,163,255,.12); --line2:rgba(148,163,255,.2);
+  --blue:#3b82f6; --blue2:#60a5fa; --cyan:#22d3ee; --green:#34d399;
+  --amber:#fbbf24; --red:#f87171;
+  --text:#f0f4ff; --t2:#94a3c4; --t3:#5b6b95;
+  --mono:'JetBrains Mono',monospace; --r:18px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{
-  font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
-  line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased;
-}
-::selection{background:rgba(124,111,255,.35)}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:rgba(59,130,246,.4)}
 a{color:inherit;text-decoration:none}
-code,pre{font-family:var(--mono)}
+code{font-family:var(--mono);font-size:.92em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+section{padding:100px 0}
+h2{font-size:clamp(30px,3.8vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1.12}
 
-/* ── Ambient background ── */
-.ambient{position:fixed;inset:0;z-index:-1;overflow:hidden}
-.ambient::before{
-  content:'';position:absolute;inset:0;
-  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
-  background-size:56px 56px;
-  mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,#000 30%,transparent 75%);
-}
-.orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:.5;animation:drift 18s ease-in-out infinite alternate}
-.orb1{width:520px;height:520px;background:#4a3aff;top:-180px;left:-120px}
-.orb2{width:420px;height:420px;background:#0e7490;top:-80px;right:-100px;animation-delay:-6s}
-.orb3{width:380px;height:380px;background:#5b21b6;top:640px;left:38%;opacity:.3;animation-delay:-12s}
-@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(50px,40px) scale(1.12)}}
+/* ambient */
+.bg-fx{position:fixed;inset:0;z-index:-1}
+.bg-fx::before{content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(148,163,255,.03) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(148,163,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 25%,transparent 72%)}
+.glow{position:absolute;border-radius:50%;filter:blur(130px)}
+.g1{width:560px;height:560px;background:#1d4ed8;opacity:.32;top:-200px;left:-140px}
+.g2{width:460px;height:460px;background:#0891b2;opacity:.25;top:-60px;right:-120px}
+.g3{width:420px;height:420px;background:#2563eb;opacity:.16;top:900px;left:40%}
 
-.wrap{max-width:1160px;margin:0 auto;padding:0 28px}
+/* nav */
+nav{position:fixed;inset:0 0 auto;z-index:50;backdrop-filter:blur(16px);
+  background:rgba(5,7,13,.75);border-bottom:1px solid var(--line)}
+.nv{display:flex;align-items:center;justify-content:space-between;height:70px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:17.5px;letter-spacing:-.02em}
+.brand i{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--blue),#1d4ed8);box-shadow:0 6px 24px rgba(59,130,246,.45)}
+.brand svg{width:19px;height:19px}
+.nl{display:flex;gap:32px;font-size:14px;font-weight:500;color:var(--t2)}
+.nl a:hover{color:var(--text)}
+.nv-r{display:flex;gap:12px;align-items:center}
+@media(max-width:840px){.nl{display:none}}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:11px;
+  font-weight:600;font-size:14px;transition:.22s;cursor:pointer;border:0;font-family:inherit}
+.b-pri{background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;
+  box-shadow:0 4px 26px rgba(59,130,246,.4)}
+.b-pri:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(59,130,246,.55)}
+.b-gho{background:var(--card);border:1px solid var(--line2);color:var(--text)}
+.b-gho:hover{border-color:var(--blue);background:var(--card2)}
 
-/* ── Nav ── */
-nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  background:rgba(7,9,15,.72);border-bottom:1px solid var(--border);
-}
-.nav-in{display:flex;align-items:center;justify-content:space-between;height:68px}
-.logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:17px;letter-spacing:-.02em}
-.logo-mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--purple),#4f46e5);display:grid;place-items:center;box-shadow:0 4px 20px rgba(124,111,255,.45)}
-.logo-mark svg{width:18px;height:18px}
-.nav-links{display:flex;gap:30px;font-size:14px;font-weight:500;color:var(--text2)}
-.nav-links a{transition:color var(--ease)}
-.nav-links a:hover{color:var(--text)}
-.btn{
-  display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;
-  font-weight:600;font-size:14px;transition:all var(--ease);cursor:pointer;border:none;
-}
-.btn-primary{background:linear-gradient(135deg,var(--purple),#5b4fd8);color:#fff;box-shadow:0 4px 24px rgba(124,111,255,.4)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,111,255,.55)}
-.btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text)}
-.btn-ghost:hover{background:var(--surface2);border-color:var(--border2)}
-@media(max-width:760px){.nav-links{display:none}}
+/* hero */
+.hero{padding:170px 0 80px}
+.hg{display:grid;grid-template-columns:1.02fr .98fr;gap:60px;align-items:center}
+@media(max-width:960px){.hg{grid-template-columns:1fr;gap:52px}}
+.kicker{display:inline-flex;align-items:center;gap:9px;padding:7px 16px;border-radius:999px;
+  background:rgba(59,130,246,.09);border:1px solid rgba(59,130,246,.3);font-size:12.5px;
+  font-weight:600;color:var(--blue2);margin-bottom:26px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 12px var(--green);animation:pl 2s infinite}
+@keyframes pl{50%{opacity:.35}}
+h1{font-size:clamp(38px,5.2vw,62px);font-weight:900;line-height:1.05;letter-spacing:-.038em;margin-bottom:22px}
+.gr{background:linear-gradient(95deg,var(--blue2),var(--cyan));-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.lead{font-size:18px;color:var(--t2);max-width:530px;margin-bottom:36px}
+.cta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:42px}
+.meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--t3);font-size:13px}
+.mchip{font-family:var(--mono);font-size:11.5px;padding:5px 12px;border-radius:8px;
+  background:var(--card);border:1px solid var(--line);color:var(--t2)}
 
-/* ── Hero ── */
-.hero{padding:168px 0 90px;position:relative}
-.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
-@media(max-width:940px){.hero-grid{grid-template-columns:1fr;gap:48px}}
-.badge{
-  display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;
-  background:var(--surface);border:1px solid var(--border);font-size:12.5px;font-weight:600;
-  color:var(--text2);margin-bottom:26px;
-}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 2.2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-h1{
-  font-size:clamp(38px,5vw,60px);font-weight:900;line-height:1.06;letter-spacing:-.035em;
-  margin-bottom:22px;
-}
-.grad{background:linear-gradient(100deg,var(--purple) 0%,var(--purple2) 45%,var(--teal) 100%);
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.hero p.lead{font-size:18px;color:var(--text2);max-width:520px;margin-bottom:34px;font-weight:400}
-.hero-cta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:44px}
-.trust{display:flex;align-items:center;gap:10px;color:var(--text3);font-size:13px;flex-wrap:wrap}
-.trust .sep{width:4px;height:4px;border-radius:50%;background:var(--text3)}
-.chip{padding:4px 11px;border-radius:7px;background:var(--surface);border:1px solid var(--border);
-  font-family:var(--mono);font-size:11.5px;color:var(--text2)}
+/* hero visual — dashboard mock */
+.mock{background:var(--card);border:1px solid var(--line2);border-radius:20px;overflow:hidden;
+  box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 140px rgba(59,130,246,.12);
+  transform:perspective(1200px) rotateY(-4deg) rotateX(2deg)}
+@media(max-width:960px){.mock{transform:none}}
+.mock-bar{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.mock-bar b{margin-left:8px;font-size:12px;color:var(--t3);font-weight:600}
+.mock-bar i{width:10px;height:10px;border-radius:50%}
+.mk-r{background:#f87171}.mk-y{background:#fbbf24}.mk-g{background:#34d399}
+.mock-in{padding:22px;display:grid;gap:14px}
+.mk-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;
+  background:var(--card2);border:1px solid var(--line);border-radius:12px;font-size:13px}
+.mk-key{font-family:var(--mono);font-size:12px;color:var(--blue2)}
+.tag{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.05em}
+.tag.on{background:rgba(52,211,153,.12);color:var(--green)}
+.tag.pub{background:rgba(34,211,238,.1);color:var(--cyan)}
+.tag.prv{background:rgba(251,191,36,.1);color:var(--amber)}
+.mk-bar{height:8px;border-radius:99px;background:rgba(148,163,255,.1);overflow:hidden;margin-top:8px}
+.mk-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.mk-h{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
 
-/* ── Terminal card ── */
-.term{
-  background:#0c0f1a;border:1px solid var(--border2);border-radius:var(--r);
-  box-shadow:0 24px 80px rgba(0,0,0,.55),0 0 0 1px rgba(124,111,255,.06),
-             0 0 120px rgba(124,111,255,.08);
-  overflow:hidden;
-}
-.term-bar{display:flex;align-items:center;gap:7px;padding:13px 16px;border-bottom:1px solid var(--border);
-  background:rgba(255,255,255,.02)}
-.term-bar span{width:11px;height:11px;border-radius:50%}
-.term-bar .r{background:#ff5f57}.term-bar .y{background:#febc2e}.term-bar .g{background:#28c840}
-.term-title{margin-left:auto;margin-right:auto;font-family:var(--mono);font-size:11.5px;color:var(--text3)}
-.term-body{padding:20px 22px;font-family:var(--mono);font-size:12.8px;line-height:1.9;min-height:264px}
-.t-cmd{color:#e8ecf7}.t-p{color:var(--purple)}.t-t{color:var(--teal)}.t-g{color:var(--green)}
-.t-m{color:var(--text3)}.t-key{color:#93c5fd}.t-str{color:#f9a825}
-.caret{display:inline-block;width:8px;height:15px;background:var(--purple);vertical-align:-2px;animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-pre{white-space:pre-wrap;word-break:break-all}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;background:var(--card);margin-top:70px}
+@media(max-width:760px){.stats{grid-template-columns:1fr 1fr}}
+.stat{padding:26px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat .k{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);font-weight:700;margin-bottom:7px}
+.stat .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px;color:var(--t3);font-weight:500}
+.ok{color:var(--green)}
 
-/* ── Live status ── */
-.status-strip{
-  display:flex;gap:0;border:1px solid var(--border);border-radius:var(--r);
-  background:var(--surface);overflow:hidden;margin-top:64px;flex-wrap:wrap;
-}
-.stat{flex:1;min-width:170px;padding:22px 26px;border-right:1px solid var(--border)}
-.stat:last-child{border-right:none}
-.stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--text3);font-weight:600;margin-bottom:6px}
-.stat .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
-.stat .v small{font-size:13px;color:var(--text3);font-weight:500}
-.v-ok{color:var(--green)}
+/* section head */
+.sh{text-align:center;max-width:660px;margin:0 auto 64px}
+.stag{display:inline-block;padding:6px 15px;border-radius:999px;font-size:11.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--blue2);
+  background:rgba(59,130,246,.09);border:1px solid rgba(59,130,246,.3);margin-bottom:18px}
+.sh p{color:var(--t2);font-size:16.5px;margin-top:14px}
 
-/* ── Sections ── */
-section{padding:96px 0}
-.sec-head{text-align:center;max-width:640px;margin:0 auto 60px}
-.sec-tag{display:inline-block;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.1em;color:var(--purple2);background:rgba(124,111,255,.1);
-  border:1px solid rgba(124,111,255,.25);margin-bottom:18px}
-h2{font-size:clamp(28px,3.6vw,42px);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px}
-.sec-head p{color:var(--text2);font-size:16.5px}
+/* features */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:920px){.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.g3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:30px 26px;transition:.25s;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-5px);border-color:rgba(59,130,246,.45);
+  box-shadow:0 18px 50px rgba(0,0,0,.4)}
+.ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;margin-bottom:20px;
+  background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3)}
+.ic svg{width:22px;height:22px;stroke:var(--blue2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ic.c{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3)}.ic.c svg{stroke:var(--cyan)}
+.ic.g{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3)}.ic.g svg{stroke:var(--green)}
+.card h3{font-size:17px;font-weight:700;margin-bottom:9px;letter-spacing:-.01em}
+.card p{font-size:14px;color:var(--t2)}
 
-/* ── Feature grid ── */
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-@media(max-width:900px){.grid3{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.grid3{grid-template-columns:1fr}}
-.card{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
-  padding:28px 26px;transition:all var(--ease);position:relative;overflow:hidden;
-}
-.card:hover{transform:translateY(-4px);border-color:rgba(124,111,255,.4);
-  background:var(--surface2);box-shadow:0 16px 48px rgba(0,0,0,.35)}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(124,111,255,.5),transparent);opacity:0;transition:opacity var(--ease)}
-.card:hover::before{opacity:1}
-.ico{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;margin-bottom:18px;
-  background:rgba(124,111,255,.12);border:1px solid rgba(124,111,255,.25)}
-.ico svg{width:21px;height:21px;stroke:var(--purple2)}
-.ico.teal{background:rgba(78,205,196,.1);border-color:rgba(78,205,196,.25)}.ico.teal svg{stroke:var(--teal)}
-.ico.green{background:rgba(61,220,151,.1);border-color:rgba(61,220,151,.25)}.ico.green svg{stroke:var(--green)}
-.card h3{font-size:16.5px;font-weight:700;margin-bottom:9px;letter-spacing:-.01em}
-.card p{font-size:13.8px;color:var(--text2);line-height:1.65}
+/* categories */
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:920px){.cats{grid-template-columns:1fr}}
+.cat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cat-top h3{font-size:19px}
+.spec{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);display:grid;gap:10px}
+.spec div{display:flex;justify-content:space-between;font-size:13px}
+.spec .k{color:var(--t3)}.spec .v{font-family:var(--mono);font-size:12px}
 
-/* ── Categories ── */
-.cat-card .cat-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-.cat-card h3{font-size:19px}
-.pill{padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.pill-pub{background:rgba(61,220,151,.12);color:var(--green);border:1px solid rgba(61,220,151,.3)}
-.pill-priv{background:rgba(249,168,37,.1);color:#f9a825;border:1px solid rgba(249,168,37,.3)}
-.spec{margin-top:16px;border-top:1px dashed var(--border);padding-top:16px;display:grid;gap:9px}
-.spec-row{display:flex;justify-content:space-between;font-size:13px}
-.spec-row .k{color:var(--text3)}
-.spec-row .v{font-family:var(--mono);font-size:12px;color:var(--text)}
+/* docs preview tabs */
+.dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:36px}
+@media(max-width:920px){.dgrid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.dgrid{grid-template-columns:1fr}}
+.dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;
+  transition:.22s;display:block}
+.dcard:hover{border-color:var(--blue);transform:translateY(-3px)}
+.dcard .di{font-size:24px;margin-bottom:12px}
+.dcard h4{font-size:15px;font-weight:700;margin-bottom:4px}
+.dcard p{font-size:12.5px;color:var(--t3)}
 
-/* ── Code / integration ── */
-.code-split{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-@media(max-width:860px){.code-split{grid-template-columns:1fr}}
-.code-card{background:#0c0f1a;border:1px solid var(--border2);border-radius:var(--r);overflow:hidden}
-.code-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.code-head .t{font-family:var(--mono);font-size:12px;color:var(--text2);font-weight:600}
-.code-head .badge-mini{font-family:var(--mono);font-size:10.5px;color:var(--teal);
-  background:rgba(78,205,196,.08);border:1px solid rgba(78,205,196,.25);padding:3px 9px;border-radius:6px}
-.code-card pre{padding:20px;font-size:12.4px;line-height:1.8;overflow-x:auto;color:#c7cde4}
+/* pricing */
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+@media(max-width:920px){.pricing{grid-template-columns:1fr}}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 30px;
+  display:flex;flex-direction:column;transition:.25s;position:relative}
+.plan:hover{transform:translateY(-6px)}
+.plan.pop{border-color:var(--blue);background:linear-gradient(180deg,rgba(59,130,246,.09),var(--card));
+  box-shadow:0 20px 60px rgba(59,130,246,.2)}
+.pop-tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(90deg,var(--blue),var(--cyan));color:#fff;font-size:11px;
+  font-weight:800;padding:5px 16px;border-radius:99px;letter-spacing:.06em}
+.plan .pn{font-size:15px;font-weight:700;color:var(--blue2)}
+.plan .pr{font-size:44px;font-weight:900;letter-spacing:-.03em;margin:10px 0 4px}
+.plan .pr small{font-size:15px;color:var(--t3);font-weight:500}
+.plan .pd{font-size:13.5px;color:var(--t2);margin-bottom:26px}
+.plan ul{list-style:none;display:grid;gap:11px;margin-bottom:32px;flex:1}
+.plan li{display:flex;gap:10px;font-size:13.8px;color:var(--t2);align-items:flex-start}
+.plan li svg{width:17px;height:17px;stroke:var(--green);flex-shrink:0;margin-top:2px}
+.plan li b{color:var(--text);font-weight:600}
 
-/* ── Architecture ── */
-.arch{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;margin-top:10px}
-.node{
-  background:var(--surface2);border:1px solid var(--border2);border-radius:14px;
-  padding:18px 26px;text-align:center;min-width:150px;
-}
-.node .n-t{font-weight:700;font-size:14.5px;margin-bottom:3px}
-.node .n-s{font-family:var(--mono);font-size:11px;color:var(--text3)}
-.arrow{width:52px;height:2px;background:linear-gradient(90deg,var(--border2),var(--purple));
-  position:relative;margin:0 6px;flex-shrink:0}
-.arrow::after{content:'';position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--purple)}
-@media(max-width:880px){.arch{flex-direction:column}.arrow{width:2px;height:36px;margin:8px 0;
-  background:linear-gradient(180deg,var(--border2),var(--purple))}
-  .arrow::after{right:-4px;top:auto;bottom:-1px;border:5px solid transparent;border-top-color:var(--purple)}}
-
-/* ── CTA final ── */
-.cta-box{
-  position:relative;border-radius:24px;padding:72px 40px;text-align:center;overflow:hidden;
-  background:linear-gradient(135deg,rgba(124,111,255,.14),rgba(78,205,196,.07));
-  border:1px solid rgba(124,111,255,.3);
-}
-.cta-box h2{margin-bottom:14px}
-.cta-box p{color:var(--text2);margin-bottom:32px;font-size:16px}
+/* cta */
+.cta-box{border-radius:26px;padding:76px 40px;text-align:center;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,rgba(59,130,246,.16),rgba(34,211,238,.07));
+  border:1px solid rgba(59,130,246,.35)}
+.cta-box p{color:var(--t2);margin:14px 0 34px;font-size:16.5px}
 .cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 
-footer{border-top:1px solid var(--border);padding:44px 0;color:var(--text3);font-size:13.5px}
-.foot-in{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px}
-.foot-links{display:flex;gap:24px}
-.foot-links a:hover{color:var(--text)}
+footer{border-top:1px solid var(--line);padding:46px 0;color:var(--t3);font-size:13.5px}
+.ft{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px}
+.fl{display:flex;gap:26px}
+.fl a:hover{color:var(--text)}
 
-/* ── Reveal anim ── */
-.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
-.reveal.on{opacity:1;transform:none}
+.rv{opacity:0;transform:translateY(26px);transition:opacity .7s,transform .7s}
+.rv.on{opacity:1;transform:none}
 </style>
 </head>
 <body>
 
-<div class="ambient">
-  <div class="orb orb1"></div>
-  <div class="orb orb2"></div>
-  <div class="orb orb3"></div>
-</div>
+<div class="bg-fx"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div></div>
 
 <nav>
-  <div class="wrap nav-in">
-    <a class="logo" href="/">
-      <span class="logo-mark">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M7 17.5a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.2 4.3 4.3 0 0 1 18 17v.5H7z" fill="#fff"/></svg>
-      </span>
+  <div class="wrap nv">
+    <a class="brand" href="/">
+      <i><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M7 17.5a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.2 4.3 4.3 0 0 1 18 17v.5H7z"/></svg></i>
       StorageHub
     </a>
-    <div class="nav-links">
-      <a href="#features">Fonctionnalités</a>
+    <div class="nl">
+      <a href="#features">Produit</a>
       <a href="#categories">Catégories</a>
-      <a href="#integration">Intégration</a>
-      <a href="/v1/info">Infos API</a>
+      <a href="#pricing">Tarifs</a>
+      <a href="/ui/docs.html">Documentation</a>
     </div>
-    <a class="btn btn-primary" href="/docs">Documentation API</a>
+    <div class="nv-r">
+      <a class="btn b-gho" href="/ui/dashboard.html">Se connecter</a>
+      <a class="btn b-pri" href="/ui/dashboard.html#register">Commencer →</a>
+    </div>
   </div>
 </nav>
 
-<!-- ═══════════ HERO ═══════════ -->
+<!-- ══════ HERO ══════ -->
 <header class="hero">
-  <div class="wrap">
-    <div class="hero-grid">
-      <div>
-        <div class="badge"><span class="dot"></span> v1.0.0 · Service en production</div>
-        <h1>Stockage de fichiers<br><span class="grad">sécurisé &amp; souverain</span><br>pour SendBID</h1>
-        <p class="lead">
-          Microservice de stockage auto-hébergé : uploads validés par magic bytes,
-          métadonnées EXIF purgées, URLs signées à durée limitée et audit trail
-          complet. Zéro dépendance cloud.
-        </p>
-        <div class="hero-cta">
-          <a class="btn btn-primary" href="/docs">
-            Explorer l'API
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
-          </a>
-          <a class="btn btn-ghost" href="/ui/console.html">Console de test</a>
-        </div>
-        <div class="trust">
-          <span class="chip">FastAPI</span>
-          <span class="chip">PostgreSQL</span>
-          <span class="chip">HMAC-SHA256</span>
-          <span class="chip">Docker</span>
-          <span class="sep"></span>
-          <span>WIB Company Engineering</span>
-        </div>
+  <div class="wrap hg">
+    <div>
+      <div class="kicker"><span class="pulse"></span> v1.0.0 · API en production · SLA-ready</div>
+      <h1>L'API de stockage<br><span class="gr">sécurisé en SaaS</span><br>pour vos fichiers</h1>
+      <p class="lead">
+        Créez un compte, générez vos clés API et uploadez en minutes — depuis votre
+        site web, votre app mobile ou votre backend. Validation magic bytes,
+        purge EXIF, URLs signées et audit complet inclus.
+      </p>
+      <div class="cta">
+        <a class="btn b-pri" href="/ui/dashboard.html#register">
+          Créer un compte gratuit
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+        </a>
+        <a class="btn b-gho" href="/ui/docs.html">Voir la documentation</a>
       </div>
-
-      <div class="term">
-        <div class="term-bar">
-          <span class="r"></span><span class="y"></span><span class="g"></span>
-          <span class="term-title">storagehub — upload</span>
-        </div>
-        <div class="term-body">
-<pre><span class="t-m"># Upload signé HMAC-SHA256</span>
-<span class="t-cmd">$ curl -X POST <span class="t-str">storagehub.aiforge.world/v1/files</span> \
-  -H <span class="t-str">"X-API-Key: •••"</span> -H <span class="t-str">"X-Signature: •••"</span> \
-  -F <span class="t-str">"file=@cni.pdf"</span> -F <span class="t-str">"category=kyc"</span></span>
-
-<span class="t-g">← 201 Created</span>
-{
-  <span class="t-key">"file_id"</span>: <span class="t-str">"a3f9…c21e"</span>,
-  <span class="t-key">"category"</span>: <span class="t-str">"kyc"</span>, <span class="t-key">"public"</span>: <span class="t-t">false</span>,
-  <span class="t-key">"checksum"</span>: <span class="t-str">"sha256:9b41…"</span>,
-  <span class="t-key">"url"</span>: <span class="t-t">null</span>  <span class="t-m">// privé — jamais exposé</span>
-}
-<span class="caret"></span></pre>
-        </div>
+      <div class="meta">
+        <span class="mchip">FastAPI</span><span class="mchip">PostgreSQL</span>
+        <span class="mchip">HMAC-SHA256</span><span class="mchip">Docker</span>
+        <span>WIB Company</span>
       </div>
     </div>
 
-    <!-- Live status -->
-    <div class="status-strip reveal">
-      <div class="stat"><div class="k">Statut service</div>
-        <div class="v" id="st-status"><span class="v-ok">—</span></div></div>
+    <div class="mock">
+      <div class="mock-bar"><i class="mk-r"></i><i class="mk-y"></i><i class="mk-g"></i>
+        <b>dashboard.storagehub</b></div>
+      <div class="mock-in">
+        <div class="mk-h">Clés API — Production</div>
+        <div class="mk-row"><span><span class="mk-key">shk_live_7f3a…9c2e</span><br>
+          <small style="color:var(--t3)">Backend Django</small></span>
+          <span class="tag on">Active</span></div>
+        <div class="mk-row"><span><span class="mk-key">shk_live_b21d…44f0</span><br>
+          <small style="color:var(--t3)">App mobile</small></span>
+          <span class="tag on">Active</span></div>
+        <div class="mk-row"><span>Utilisation — plan Pro</span><span class="mk-key">12.4 / 50 GB</span></div>
+        <div class="mk-bar"><i style="width:25%"></i></div>
+        <div class="mk-row"><span>Fichiers stockés</span><span class="tag pub">1 284 avatars</span>
+          <span class="tag prv">312 kyc</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="stats rv">
+      <div class="stat"><div class="k">Statut</div>
+        <div class="v" id="st-status">—</div></div>
       <div class="stat"><div class="k">Uptime</div>
         <div class="v" id="st-uptime">—</div></div>
       <div class="stat"><div class="k">Base de données</div>
         <div class="v" id="st-db">—</div></div>
       <div class="stat"><div class="k">Disque</div>
         <div class="v" id="st-disk">—</div></div>
-      <div class="stat"><div class="k">Endpoints</div>
-        <div class="v">8 <small>REST</small></div></div>
     </div>
   </div>
 </header>
 
-<!-- ═══════════ FEATURES ═══════════ -->
+<!-- ══════ FEATURES ══════ -->
 <section id="features">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="sec-tag">Sécurité by design</div>
+    <div class="sh rv">
+      <div class="stag">Sécurité by design</div>
       <h2>Chaque couche pensée pour la confiance</h2>
       <p>Conçu pour les documents sensibles — KYC, reçus de paiement — avec une
       séparation stricte entre contenu public et privé.</p>
     </div>
-    <div class="grid3">
-      <div class="card reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
-        <h3>Authentification HMAC-SHA256</h3>
-        <p>Chaque requête est signée : <code>X-API-Key</code> + <code>X-Timestamp</code> + <code>X-Signature</code> avec fenêtre de tolérance anti-rejeu. Obligatoire en production.</p>
-      </div>
-      <div class="card reveal">
-        <div class="ico teal"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <h3>Validation par magic bytes</h3>
-        <p>Le type MIME est détecté depuis le contenu réel du fichier — jamais depuis l'extension déclarée. Exécutables et scripts rejetés.</p>
-      </div>
-      <div class="card reveal">
-        <div class="ico green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg></div>
-        <h3>URLs signées à TTL court</h3>
-        <p>Accès temporaire aux fichiers sensibles via des liens HMAC expirables — par défaut 60 secondes, auditable à chaque usage.</p>
-      </div>
-      <div class="card reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></div>
-        <h3>Purge EXIF systématique</h3>
-        <p>GPS, modèle d'appareil, horodatage : toutes les métadonnées sont supprimées et l'image ré-encodée avant persistance.</p>
-      </div>
-      <div class="card reveal">
-        <div class="ico teal"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 8v8m-4-4h8M4 6h16M6 6l1 14h10l1-14"/></svg></div>
-        <h3>Audit trail complet</h3>
-        <p>Chaque accès aux fichiers sensibles est journalisé : utilisateur, rôle, IP, user-agent, action et résultat — en base PostgreSQL.</p>
-      </div>
-      <div class="card reveal">
-        <div class="ico green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg></div>
-        <h3>Observabilité native</h3>
-        <p>Health checks DB + disque, métriques au format Prometheus, <code>X-Request-ID</code> sur chaque réponse pour la traçabilité.</p>
-      </div>
+    <div class="g3">
+      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+        <h3>Clés API par client</h3>
+        <p>Chaque client génère ses propres paires <code>api_key</code> + <code>hmac_secret</code> depuis son dashboard. Révocation en un clic, quotas par plan.</p></div>
+      <div class="card rv"><div class="ic c"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Signature HMAC-SHA256</h3>
+        <p>Chaque requête est signée avec timestamp anti-rejeu (fenêtre 30 s). Le secret ne transite jamais sur le réseau.</p></div>
+      <div class="card rv"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13l2 2 4-4"/></svg></div>
+        <h3>Validation magic bytes</h3>
+        <p>Le type MIME réel est détecté depuis le contenu. Exécutables, scripts et archives suspectes sont rejetés avant écriture.</p></div>
+      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg></div>
+        <h3>URLs signées à TTL</h3>
+        <p>Partagez un fichier sensible via un lien HMAC expirant — plafonné selon le plan (60 s → 1 h).</p></div>
+      <div class="card rv"><div class="ic c"><svg viewBox="0 0 24 24"><path d="M12 3c-2 5-6 7-6 12a6 6 0 0 0 12 0c0-5-4-7-6-12z"/></svg></div>
+        <h3>Purge EXIF</h3>
+        <p>GPS, appareil, horodatage : les métadonnées sont supprimées et l'image ré-encodée avant stockage.</p></div>
+      <div class="card rv"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg></div>
+        <h3>Audit &amp; métriques</h3>
+        <p>Journal d'accès en base (qui, quand, IP, action), health checks et endpoint <code>/v1/metrics</code> compatible Prometheus.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════ CATEGORIES ═══════════ -->
-<section id="categories" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+<!-- ══════ CATEGORIES ══════ -->
+<section id="categories" style="background:var(--bg2);border-block:1px solid var(--line)">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="sec-tag">Trois catégories, deux mondes</div>
+    <div class="sh rv">
+      <div class="stag">Trois catégories, deux mondes</div>
       <h2>Public ou privé — jamais les deux</h2>
-      <p>La catégorie détermine l'exposition : les avatars sont servis publiquement
-      avec cache CDN, KYC et reçus restent derrière authentification et audit.</p>
+      <p>La catégorie détermine l'exposition : les avatars sont publics avec cache
+      longue durée, KYC et reçus exigent authentification et audit.</p>
     </div>
-    <div class="grid3">
-      <div class="card cat-card reveal">
-        <div class="cat-top"><h3>Avatars</h3><span class="pill pill-pub">Public</span></div>
-        <p>Photos de profil servies via CDN avec cache immutable d'un an. Aucune auth requise.</p>
+    <div class="cats">
+      <div class="card rv">
+        <div class="cat-top"><h3>Avatars</h3><span class="tag pub">Public</span></div>
+        <p>Photos de profil servies publiquement, cache immutable 1 an.</p>
         <div class="spec">
-          <div class="spec-row"><span class="k">Taille max</span><span class="v">5 MB</span></div>
-          <div class="spec-row"><span class="k">Formats</span><span class="v">JPEG · PNG · WebP</span></div>
-          <div class="spec-row"><span class="k">Accès</span><span class="v">/v1/public/avatars/{id}</span></div>
+          <div><span class="k">Taille max</span><span class="v">5 MB</span></div>
+          <div><span class="k">Formats</span><span class="v">JPEG · PNG · WebP</span></div>
+          <div><span class="k">Accès</span><span class="v">/v1/public/avatars/{id}</span></div>
         </div>
       </div>
-      <div class="card cat-card reveal">
-        <div class="cat-top"><h3>Documents KYC</h3><span class="pill pill-priv">Privé</span></div>
-        <p>Pièces d'identité. Accès réservé au propriétaire et aux agents KYC, chaque lecture journalisée.</p>
+      <div class="card rv">
+        <div class="cat-top"><h3>Documents KYC</h3><span class="tag prv">Privé</span></div>
+        <p>Pièces d'identité — accès propriétaire/agent, chaque lecture journalisée.</p>
         <div class="spec">
-          <div class="spec-row"><span class="k">Taille max</span><span class="v">10 MB</span></div>
-          <div class="spec-row"><span class="k">Formats</span><span class="v">JPEG · PNG · PDF</span></div>
-          <div class="spec-row"><span class="k">Accès</span><span class="v">auth + audit + URL signée</span></div>
+          <div><span class="k">Taille max</span><span class="v">10 MB</span></div>
+          <div><span class="k">Formats</span><span class="v">JPEG · PNG · PDF</span></div>
+          <div><span class="k">Accès</span><span class="v">auth + audit + signed URL</span></div>
         </div>
       </div>
-      <div class="card cat-card reveal">
-        <div class="cat-top"><h3>Reçus</h3><span class="pill pill-priv">Privé</span></div>
-        <p>Justificatifs de transaction PayBID. Même isolation que KYC — jamais exposés publiquement.</p>
+      <div class="card rv">
+        <div class="cat-top"><h3>Reçus</h3><span class="tag prv">Privé</span></div>
+        <p>Justificatifs de transaction — même isolation stricte que le KYC.</p>
         <div class="spec">
-          <div class="spec-row"><span class="k">Taille max</span><span class="v">10 MB</span></div>
-          <div class="spec-row"><span class="k">Formats</span><span class="v">JPEG · PNG · PDF</span></div>
-          <div class="spec-row"><span class="k">Accès</span><span class="v">auth + audit + URL signée</span></div>
+          <div><span class="k">Taille max</span><span class="v">10 MB</span></div>
+          <div><span class="k">Formats</span><span class="v">JPEG · PNG · PDF</span></div>
+          <div><span class="k">Accès</span><span class="v">auth + audit + signed URL</span></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════ INTEGRATION ═══════════ -->
-<section id="integration">
+<!-- ══════ DOCS PREVIEW ══════ -->
+<section id="docs">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="sec-tag">Intégration en minutes</div>
-      <h2>Un client prêt pour Django</h2>
-      <p>Le SDK Python gère la signature HMAC pour vous — trois lignes suffisent.</p>
+    <div class="sh rv">
+      <div class="stag">Documentation complète</div>
+      <h2>Intégrez où vous voulez</h2>
+      <p>Guides pas-à-pas pour chaque plateforme — site web, application mobile
+      ou backend serveur.</p>
     </div>
-    <div class="code-split">
-      <div class="code-card reveal">
-        <div class="code-head"><span class="t">views.py — Django</span><span class="badge-mini">storage_client.py</span></div>
-<pre><span class="t-t">from</span> django_integration.storage_client <span class="t-t">import</span> StorageClient
-
-client = <span class="t-p">StorageClient</span>()
-
-<span class="t-m"># Upload un avatar → URL publique CDN</span>
-res = client.<span class="t-p">upload_avatar</span>(
-    request.FILES[<span class="t-str">"avatar"</span>],
-    owner_user_id=<span class="t-t">str</span>(request.user.id),
-)
-profile.avatar_url = res[<span class="t-str">"url"</span>]
-
-<span class="t-m"># URL signée 60s pour un document KYC</span>
-link = client.<span class="t-p">get_file_url</span>(kyc_id, user_id, ttl=<span class="t-str">60</span>)</pre>
-      </div>
-      <div class="code-card reveal">
-        <div class="code-head"><span class="t">Réponse — contrat uniforme</span><span class="badge-mini">JSON</span></div>
-<pre>{
-  <span class="t-key">"file_id"</span>:  <span class="t-str">"a3f9d2…"</span>,
-  <span class="t-key">"category"</span>: <span class="t-str">"avatars"</span>,
-  <span class="t-key">"size"</span>:     <span class="t-t">48213</span>,
-  <span class="t-key">"mime"</span>:     <span class="t-str">"image/webp"</span>,
-  <span class="t-key">"checksum"</span>: <span class="t-str">"9b41f7…"</span>,
-  <span class="t-key">"url"</span>:      <span class="t-str">"https://storagehub.aiforge.world
-                /v1/public/avatars/a3f9d2…"</span>,
-  <span class="t-key">"public"</span>:   <span class="t-t">true</span>
-}
-
-<span class="t-m"># Chaque réponse porte X-Request-ID</span>
-<span class="t-m"># Environ: dev = SQLite · prod = PostgreSQL</span></pre>
-      </div>
+    <div class="dgrid">
+      <a class="dcard rv" href="/ui/docs.html#web"><div class="di">🌐</div><h4>Site web / SPA</h4><p>JavaScript fetch, FormData, prévisualisations</p></a>
+      <a class="dcard rv" href="/ui/docs.html#mobile"><div class="di">📱</div><h4>App mobile</h4><p>React Native &amp; Flutter — upload depuis la caméra</p></a>
+      <a class="dcard rv" href="/ui/docs.html#server"><div class="di">⚙️</div><h4>Backend serveur</h4><p>Python, Node.js, cURL — signature HMAC complète</p></a>
+      <a class="dcard rv" href="/ui/docs.html#errors"><div class="di">📖</div><h4>Référence API</h4><p>Endpoints, codes d'erreur, limites par plan</p></a>
     </div>
-
-    <!-- Architecture -->
-    <div class="arch reveal" style="margin-top:70px">
-      <div class="node"><div class="n-t">Backend Django</div><div class="n-s">HMAC signé</div></div>
-      <div class="arrow"></div>
-      <div class="node"><div class="n-t">Traefik</div><div class="n-s">TLS · Let's Encrypt</div></div>
-      <div class="arrow"></div>
-      <div class="node"><div class="n-t">StorageHub API</div><div class="n-s">FastAPI :8080</div></div>
-      <div class="arrow"></div>
-      <div class="node"><div class="n-t">PostgreSQL + Disque</div><div class="n-s">méta · audit · blobs</div></div>
+    <div style="text-align:center" class="rv">
+      <a class="btn b-gho" href="/ui/docs.html">Ouvrir la documentation complète →</a>
     </div>
   </div>
 </section>
 
-<!-- ═══════════ CTA ═══════════ -->
-<section style="padding-top:20px">
+<!-- ══════ PRICING ══════ -->
+<section id="pricing" style="background:var(--bg2);border-block:1px solid var(--line)">
   <div class="wrap">
-    <div class="cta-box reveal">
-      <h2>Prêt à intégrer <span class="grad">StorageHub</span> ?</h2>
-      <p>Documentation interactive Swagger, console de test intégrée et monitoring temps réel.</p>
+    <div class="sh rv">
+      <div class="stag">Tarifs</div>
+      <h2>Un plan pour chaque étape</h2>
+      <p>Commencez gratuitement, évoluez sans friction. Changement de plan
+      instantané depuis votre dashboard.</p>
+    </div>
+    <div class="pricing">
+      <div class="plan rv">
+        <div class="pn">Gratuit</div>
+        <div class="pr">0€<small>/mois</small></div>
+        <div class="pd">Pour tester et prototyper.</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>500 MB</b> de stockage</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>1 clé API</b> active</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>URLs signées <b>60 s</b> max</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>3 catégories de fichiers</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Support community</span></li>
+        </ul>
+        <a class="btn b-gho" href="/ui/dashboard.html#register" style="justify-content:center">Commencer</a>
+      </div>
+      <div class="plan pop rv">
+        <div class="pop-tag">POPULAIRE</div>
+        <div class="pn">Pro</div>
+        <div class="pr">19€<small>/mois</small></div>
+        <div class="pd">Pour les applications en production.</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>50 GB</b> de stockage</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>3 clés API</b> actives</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>URLs signées <b>5 min</b> max</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Audit trail complet</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Support email 24 h</span></li>
+        </ul>
+        <a class="btn b-pri" href="/ui/dashboard.html#register" style="justify-content:center">Passer Pro</a>
+      </div>
+      <div class="plan rv">
+        <div class="pn">Business</div>
+        <div class="pr">79€<small>/mois</small></div>
+        <div class="pd">Pour les plateformes à fort volume.</div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>500 GB</b> de stockage</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>10 clés API</b> actives</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>URLs signées <b>1 h</b> max</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Audit trail complet</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Support prioritaire + SLA</span></li>
+        </ul>
+        <a class="btn b-gho" href="/ui/dashboard.html#register" style="justify-content:center">Passer Business</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ CTA ══════ -->
+<section>
+  <div class="wrap">
+    <div class="cta-box rv">
+      <h2>Prêt à stocker <span class="gr">en toute confiance</span> ?</h2>
+      <p>Compte gratuit en 30 secondes — vos credentials API sont générés instantanément.</p>
       <div class="cta-btns">
-        <a class="btn btn-primary" href="/docs">Swagger UI</a>
-        <a class="btn btn-ghost" href="/redoc">ReDoc</a>
-        <a class="btn btn-ghost" href="/v1/metrics">Métriques</a>
+        <a class="btn b-pri" href="/ui/dashboard.html#register">Créer mon compte</a>
+        <a class="btn b-gho" href="/docs">Swagger UI</a>
+        <a class="btn b-gho" href="/ui/docs.html">Guides d'intégration</a>
       </div>
     </div>
   </div>
 </section>
 
 <footer>
-  <div class="wrap foot-in">
+  <div class="wrap ft">
     <span>© 2026 <strong>WIB Company</strong> — SendBID / PayBID · StorageHub v1.0.0</span>
-    <div class="foot-links">
-      <a href="/docs">API</a>
+    <div class="fl">
+      <a href="/ui/docs.html">Docs</a>
+      <a href="/ui/dashboard.html">Dashboard</a>
       <a href="/health">Status</a>
-      <a href="/ui/console.html">Console</a>
-      <a href="/v1/info">Info</a>
+      <a href="/v1/metrics">Métriques</a>
     </div>
   </div>
 </footer>
 
 <script>
-// ── Reveal on scroll
 const io = new IntersectionObserver(es =>
-  es.forEach(e => e.isIntersecting && e.target.classList.add('on')),
-  {threshold:.12});
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  es.forEach(e => e.isIntersecting && e.target.classList.add('on')), {threshold:.1});
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
 
-// ── Live status from /health
-function fmtUptime(s){
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return h ? `${h}h ${m}m` : (m ? `${m}m ${Math.floor(s%60)}s` : `${Math.floor(s)}s`);
-}
-fetch('/health').then(r => r.json()).then(h => {
+function fmtUp(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
+  return h?`${h}h ${m}m`:(m?`${m}m`:`${Math.floor(s)}s`)}
+fetch('/health').then(r=>r.json()).then(h=>{
   document.getElementById('st-status').innerHTML =
-    h.status === 'ok' ? '<span class="v-ok">● Opérationnel</span>'
-                      : '<span style="color:#f9a825">● Dégradé</span>';
-  document.getElementById('st-uptime').textContent = fmtUptime(h.uptime_seconds || 0);
+    h.status==='ok'?'<span class="ok">● Opérationnel</span>':'<span style="color:#fbbf24">● Dégradé</span>';
+  document.getElementById('st-uptime').textContent = fmtUp(h.uptime_seconds||0);
   document.getElementById('st-db').innerHTML =
-    h.db === 'ok' ? '<span class="v-ok">Connectée</span>' : '<span style="color:#f06068">Erreur</span>';
-  const d = h.disk_usage || {};
+    h.db==='ok'?'<span class="ok">Connectée</span>':'<span style="color:#f87171">Erreur</span>';
+  const d=h.disk_usage||{};
   document.getElementById('st-disk').innerHTML =
-    `${d.percent ?? '—'}<small>% · ${d.free_gb ?? '?'} GB libres</small>`;
-}).catch(() => {
-  document.getElementById('st-status').innerHTML = '<span style="color:#f06068">● Injoignable</span>';
-});
+    `${d.percent??'—'}<small>% · ${d.free_gb??'?'} GB libres</small>`;
+}).catch(()=>{document.getElementById('st-status').innerHTML='<span style="color:#f87171">● Injoignable</span>'});
 </script>
 </body>
 </html>
