@@ -1,6 +1,6 @@
 services:
   # ── Storage service (routed via Traefik/Dokploy — no public port)
-  # PostgreSQL is provided by the managed Dokploy service "sendbid-storage-db"
+  # PostgreSQL is provided by the managed Dokploy service "storagehub-db"
   storage:
     build: .
     restart: unless-stopped

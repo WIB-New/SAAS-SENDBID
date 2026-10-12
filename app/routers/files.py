@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Files router
+StorageHub — Files router
 POST   /v1/files                              Upload (multipart)
 GET    /v1/files                              Liste des fichiers de l'utilisateur
 GET    /v1/files/{file_id}                    Stream (auth requise)

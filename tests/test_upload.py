@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Upload tests
+StorageHub — Upload tests
 Tests: valid upload, invalid MIME, oversized file, path traversal, empty file
 """
 import io

@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Access control tests
+StorageHub — Access control tests
 Tests: owner access, other user denied, admin access, signed URL
 """
 import io

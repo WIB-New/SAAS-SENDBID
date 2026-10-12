@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Pydantic schemas (request/response)
+StorageHub — Pydantic schemas (request/response)
 Toutes les réponses suivent un contrat cohérent pour l'intégration.
 """
 from datetime import datetime
@@ -148,4 +148,4 @@ class AuditLogEntry(BaseModel):
 class PingResponse(BaseModel):
     pong: bool = True
     version: str = "1.0.0"
-    service: str = "sendbid-storage"
+    service: str = "storagehub"

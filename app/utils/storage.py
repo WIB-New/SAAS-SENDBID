@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Storage utilities
+StorageHub — Storage utilities
 - File persistence to disk
 - Checksum computation
 - Signed URL generation

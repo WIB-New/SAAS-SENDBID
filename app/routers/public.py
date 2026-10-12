@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Public files router (avatars only, no auth required)
+StorageHub — Public files router (avatars only, no auth required)
 GET /v1/public/avatars/{file_id}
 
 NOTE: In production this is served by Nginx directly from disk.

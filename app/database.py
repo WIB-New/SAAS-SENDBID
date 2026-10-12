@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Database setup (SQLAlchemy async)
+StorageHub — Database setup (SQLAlchemy async)
 """
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker

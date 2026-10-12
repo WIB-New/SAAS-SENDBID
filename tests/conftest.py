@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Test configuration and fixtures
+StorageHub — Test configuration and fixtures
 """
 import asyncio
 import io

@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Client accounts router (SaaS self-service)
+StorageHub — Client accounts router (SaaS self-service)
 POST   /v1/accounts/register        Créer un compte → credentials API
 POST   /v1/accounts/login           Session JWT dashboard
 GET    /v1/accounts/me              Profil + usage + clés

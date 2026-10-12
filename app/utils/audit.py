@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Audit logging for sensitive file access
+StorageHub — Audit logging for sensitive file access
 """
 from datetime import datetime
 from typing import Optional

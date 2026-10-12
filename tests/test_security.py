@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Security tests
+StorageHub — Security tests
 CRITICAL: Verifies that sensitive files (kyc, receipts) are NEVER
 accessible via public URL, only via authenticated /v1/files/{id} route.
 """

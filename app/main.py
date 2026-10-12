@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Storage Service
+StorageHub — Storage Service
 FastAPI application entry point — prêt pour l'intégration
 """
 import os
@@ -28,16 +28,16 @@ async def lifespan(app: FastAPI):
         path = settings.upload_path / category
         path.mkdir(parents=True, exist_ok=True)
     await init_db()
-    print(f"[SENDBID] Storage Service started — env={settings.app_env}")
-    print(f"[SENDBID] Upload root: {settings.upload_path.resolve()}")
+    print(f"[STORAGEHUB] Storage Service started — env={settings.app_env}")
+    print(f"[STORAGEHUB] Upload root: {settings.upload_path.resolve()}")
     yield
-    print("[SENDBID] Storage Service shutting down")
+    print("[STORAGEHUB] Storage Service shutting down")
 
 
 app = FastAPI(
-    title="SAAS SENDBID — Storage Service",
+    title="StorageHub — Secure Storage API",
     description=(
-        "## Microservice de stockage local sécurisé — SendBID / PayBID\n\n"
+        "## API de stockage de fichiers sécurisée — multi-tenant SaaS\n\n"
         "### Authentification\n"
         "Tous les endpoints `/v1/` requièrent le header **`X-API-Key`**.\n\n"
         "En production, ajouter **`X-Timestamp`** et **`X-Signature`** (HMAC-SHA256).\n\n"
@@ -47,13 +47,13 @@ app = FastAPI(
         "```json\n{ \"success\": true, \"request_id\": \"uuid\", \"data\": {...} }\n```\n"
         "### Erreurs\n"
         "```json\n{ \"success\": false, \"request_id\": \"uuid\", \"error\": \"message\", \"code\": \"ERROR_CODE\" }\n```\n"
-        "### Auth de test (dev)\n"
-        "```\nX-API-Key: dev-api-key-sendbid-2024\nX-User-Id: user-001\nX-User-Role: user\n```"
     ),
     version="1.0.0",
     contact={"name": "WIB Company — Engineering", "email": "tech@wibcompany.com"},
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # Swagger / ReDoc exposés uniquement en développement
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
     openapi_tags=[
         {"name": "files",       "description": "Upload, download, suppression et métadonnées des fichiers"},
         {"name": "public",      "description": "Accès public aux avatars (sans authentification)"},
@@ -153,7 +153,7 @@ async def root():
     if os.path.exists(index):
         return FileResponse(index)
     return {
-        "service": "SAAS SENDBID — Storage Service",
+        "service": "StorageHub — Storage Service",
         "version": "1.0.0",
         "status": "running",
         "uptime_seconds": round(time.time() - _start_time, 1),
@@ -166,4 +166,4 @@ async def ping():
     Endpoint ultra-léger pour vérifier que le service répond.
     Pas de vérification DB ni disque — utilisé par load-balancers et orchestrateurs.
     """
-    return {"pong": True, "version": "1.0.0", "service": "sendbid-storage"}
+    return {"pong": True, "version": "1.0.0", "service": "storagehub"}

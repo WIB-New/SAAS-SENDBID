@@ -1,11 +1,11 @@
 """
-SAAS SENDBID — Migration script: Emergent Object Storage → Local Storage
+StorageHub — Migration script: Emergent Object Storage → Local Storage
 Usage:
     python scripts/migrate_from_emergent.py \
         --emergent-base-url https://storage.emergent.example.com \
         --emergent-api-key YOUR_KEY \
         --storage-url http://localhost:8080 \
-        --storage-api-key dev-api-key-sendbid-2024 \
+        --storage-api-key dev-api-key \
         --dry-run
 
 The script downloads each file from Emergent, verifies its checksum,
@@ -24,11 +24,11 @@ from pathlib import Path
 import requests
 
 # ── CLI arguments
-parser = argparse.ArgumentParser(description="Migrate files from Emergent Storage to SENDBID Storage")
+parser = argparse.ArgumentParser(description="Migrate files from Emergent Storage to STORAGEHUB Storage")
 parser.add_argument("--emergent-base-url", required=True, help="Emergent Storage base URL")
 parser.add_argument("--emergent-api-key", required=True, help="Emergent API key")
-parser.add_argument("--storage-url", default="http://localhost:8080", help="SENDBID storage service URL")
-parser.add_argument("--storage-api-key", default="dev-api-key-sendbid-2024", help="SENDBID API key")
+parser.add_argument("--storage-url", default="http://localhost:8080", help="STORAGEHUB storage service URL")
+parser.add_argument("--storage-api-key", default="dev-api-key", help="STORAGEHUB API key")
 parser.add_argument("--manifest", help="CSV manifest file with file list (id,category,owner_user_id,url)")
 parser.add_argument("--dry-run", action="store_true", help="Simulate without uploading")
 parser.add_argument("--output-report", default="migration_report.json", help="Output report file")
@@ -46,7 +46,7 @@ def download_from_emergent(url: str, api_key: str) -> bytes:
     return resp.content
 
 
-def upload_to_sendbid(
+def upload_to_storagehub(
     storage_url: str,
     api_key: str,
     content: bytes,
@@ -116,8 +116,8 @@ def migrate(args):
             print(f"  Downloaded: {len(content)} bytes, checksum={actual_checksum[:16]}...")
 
             if not args.dry_run:
-                # Upload to SENDBID
-                result = upload_to_sendbid(
+                # Upload to STORAGEHUB
+                result = upload_to_storagehub(
                     storage_url=args.storage_url,
                     api_key=args.storage_api_key,
                     content=content,

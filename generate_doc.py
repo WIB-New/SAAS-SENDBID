@@ -1,6 +1,6 @@
 """
-SAAS SENDBID — Générateur de documentation Word
-Crée le fichier SENDBID_StorageService_Documentation.docx
+StorageHub — Générateur de documentation Word
+Crée le fichier STORAGEHUB_StorageService_Documentation.docx
 """
 from docx import Document
 from docx.shared import Pt, RGBColor, Cm, Inches
@@ -11,7 +11,7 @@ from docx.oxml import OxmlElement
 import datetime
 
 
-# ── Couleurs WIB / SENDBID
+# ── Couleurs WIB / STORAGEHUB
 C_DARK_BLUE  = RGBColor(0x1A, 0x1D, 0x27)
 C_PURPLE     = RGBColor(0x6C, 0x63, 0xFF)
 C_TEAL       = RGBColor(0x4E, 0xCD, 0xC4)
@@ -214,7 +214,7 @@ def build_document():
     p.paragraph_format.space_before = Pt(60)
     p.paragraph_format.space_after = Pt(4)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run('SAAS SENDBID')
+    run = p.add_run('StorageHub')
     run.font.size = Pt(36)
     run.font.bold = True
     run.font.color.rgb = C_PURPLE
@@ -229,7 +229,7 @@ def build_document():
 
     p3 = doc.add_paragraph()
     p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run3 = p3.add_run('WIB Company  ·  Microservice de stockage local sécurisé\nSendBID / PayBID — Application mobile de transactions financières internationales')
+    run3 = p3.add_run('WIB Company  ·  Microservice de stockage local sécurisé\nStorageHub — Application mobile de transactions financières internationales')
     run3.font.size = Pt(11)
     run3.font.color.rgb = C_MID_GREY
 
@@ -296,7 +296,7 @@ def build_document():
     add_horizontal_line(doc)
 
     doc.add_paragraph(
-        'SendBID et PayBID sont des applications mobiles de transactions financières internationales '
+        'StorageHub et StorageHub sont des applications mobiles de transactions financières internationales '
         'développées par WIB Company. Le stack technique est composé de React Native pour le front-end mobile, '
         'Django REST Framework pour le backend API, et PostgreSQL comme base de données principale.'
     )
@@ -347,7 +347,7 @@ def build_document():
 
     add_code_block(doc, """\
 ┌──────────────────────────────────────────────────────────────────┐
-│                      SAAS SENDBID                                │
+│                      StorageHub                                │
 │                React Native Mobile App                           │
 └─────────────────────────┬────────────────────────────────────────┘
                           │ HTTPS
@@ -360,8 +360,8 @@ def build_document():
          │ HTTPS + API Key + HMAC Signature          │
          │ X-User-Id, X-User-Role                    │
 ┌────────▼──────────────────────────────┐    ┌──────▼─────────────┐
-│     SENDBID Storage Service           │    │   PostgreSQL        │
-│         FastAPI  :8080                │    │  sendbid_storage    │
+│     STORAGEHUB Storage Service           │    │   PostgreSQL        │
+│         FastAPI  :8080                │    │  storagehub_db    │
 │                                       │    │  ┌───────────────┐  │
 │  POST  /v1/files         (upload)     │◄──►│  │ stored_files  │  │
 │  GET   /v1/files/{id}    (stream)     │    │  │ audit_logs    │  │
@@ -411,7 +411,7 @@ def build_document():
     add_horizontal_line(doc)
 
     add_code_block(doc, """\
-sendbid-storage-service/
+storagehub-service/
 │
 ├── app/                              ← Application FastAPI principale
 │   ├── __init__.py
@@ -467,7 +467,7 @@ sendbid-storage-service/
 ├── docker-compose.yml                ← PostgreSQL + service containerisé
 ├── Dockerfile                        ← Image Docker production
 ├── requirements.txt                  ← Dépendances Python
-└── sendbid_storage.db                ← SQLite (dev uniquement)""",
+└── storagehub.db                ← SQLite (dev uniquement)""",
     caption='Arborescence complète du projet')
 
     doc.add_page_break()
@@ -485,7 +485,7 @@ sendbid-storage-service/
     )
 
     add_code_block(doc, """\
-/var/app/uploads/                    ← Racine (permission 750, user sendbid)
+/var/app/uploads/                    ← Racine (permission 750, user storagehub)
 │
 ├── avatars/                         ← PUBLICS — servis par Nginx + Cloudflare CDN
 │   ├── 2025/
@@ -524,10 +524,10 @@ sendbid-storage-service/
 
     add_code_block(doc, """\
 # Créer l'utilisateur dédié
-sudo useradd -r -s /sbin/nologin sendbid
+sudo useradd -r -s /sbin/nologin storagehub
 
 # Permissions strictes
-sudo chown -R sendbid:sendbid /var/app/uploads
+sudo chown -R storagehub:storagehub /var/app/uploads
 sudo chmod 750 /var/app/uploads
 sudo chmod 750 /var/app/uploads/avatars
 sudo chmod 750 /var/app/uploads/kyc        # Lecture seule par l'app
@@ -671,7 +671,7 @@ sudo chmod 750 /var/app/uploads/receipts
             'Liveness probe ultra-léger — aucune vérification DB ni disque. '
             'Utilisé par les load-balancers, orchestrateurs (k8s) et health-checkers.',
             '—',
-            '200 OK\n{"pong": true, "version": "1.0.0", "service": "sendbid-storage"}'
+            '200 OK\n{"pong": true, "version": "1.0.0", "service": "storagehub"}'
         ),
         (
             'GET', '/v1/info', 'Aucune',
@@ -679,14 +679,14 @@ sudo chmod 750 /var/app/uploads/receipts
             'types MIME autorisés, TTL des URLs signées, headers requis. '
             'Point d\'entrée pour les équipes qui intègrent le service.',
             '—',
-            '200 OK\n{"service":"sendbid-storage","version":"1.0.0","categories":{"avatars":{"public":true,"max_size_mb":5,"allowed_mimes":[...]},...},"auth":{"required_header":"X-API-Key",...}}'
+            '200 OK\n{"service":"storagehub","version":"1.0.0","categories":{"avatars":{"public":true,"max_size_mb":5,"allowed_mimes":[...]},...},"auth":{"required_header":"X-API-Key",...}}'
         ),
         (
             'GET', '/v1/metrics', 'Aucune',
             'Métriques au format Prometheus avec labels — disque total/libre/utilisé, '
             'taille et nombre de fichiers par catégorie, uptime.',
             '—',
-            'sendbid_disk_used_gb 12.4\nsendbid_disk_free_gb 87.6\nsendbid_category_size_mb{category="kyc"} 234.5\nsendbid_uptime_seconds 3642\n...'
+            'storagehub_disk_used_gb 12.4\nstoragehub_disk_free_gb 87.6\nstoragehub_category_size_mb{category="kyc"} 234.5\nstoragehub_uptime_seconds 3642\n...'
         ),
     ]
 
@@ -866,7 +866,7 @@ headers = {
     add_horizontal_line(doc)
 
     add_code_block(doc, """\
-# /etc/nginx/sites-available/sendbid-storage.conf
+# /etc/nginx/sites-available/storagehub.conf
 
 # ── CRITIQUE : Bloquer les dossiers sensibles en premier
 location ~* ^/uploads/(kyc|receipts)/ {
@@ -913,7 +913,7 @@ add_header X-Content-Type-Options "nosniff" always;""",
         rows=[
             ['UPLOAD_DIR',     '/var/app/uploads',           'Répertoire source à sauvegarder'],
             ['RESTIC_REPO',    'sftp:backup@.../backups/',   'Dépôt restic distant (SSH)'],
-            ['RESTIC_PASSWORD_FILE', '/etc/sendbid/restic-password', 'Fichier contenant le mot de passe chiffrement'],
+            ['RESTIC_PASSWORD_FILE', '/etc/storagehub/restic-password', 'Fichier contenant le mot de passe chiffrement'],
             ['KEEP_DAILY',     '7',                          'Conserver 7 snapshots quotidiens'],
             ['KEEP_WEEKLY',    '4',                          'Conserver 4 snapshots hebdomadaires'],
             ['KEEP_MONTHLY',   '3',                          'Conserver 3 snapshots mensuels'],
@@ -925,9 +925,9 @@ add_header X-Content-Type-Options "nosniff" always;""",
     doc.add_paragraph()
     doc.add_paragraph('Planification (cron) :')
     add_code_block(doc, """\
-# Crontab — exécuter en tant que sendbid
-0 2 * * *   /opt/sendbid/scripts/backup.sh    # Backup quotidien à 2h
-*/15 * * * * /opt/sendbid/scripts/monitor_disk.sh  # Vérif disque toutes les 15 min""",
+# Crontab — exécuter en tant que storagehub
+0 2 * * *   /opt/storagehub/scripts/backup.sh    # Backup quotidien à 2h
+*/15 * * * * /opt/storagehub/scripts/monitor_disk.sh  # Vérif disque toutes les 15 min""",
     caption='Crontab recommandé')
 
     h2 = doc.add_heading('11.2 Monitoring disque — scripts/monitor_disk.sh', level=2)
@@ -963,7 +963,7 @@ python scripts/migrate_from_emergent.py \\
     --emergent-base-url https://storage.emergent.example.com \\
     --emergent-api-key  YOUR_EMERGENT_KEY \\
     --storage-url       http://localhost:8080 \\
-    --storage-api-key   your-sendbid-api-key \\
+    --storage-api-key   your-api-key \\
     --manifest          files_manifest.csv \\
     --dry-run           # Simuler d'abord, puis relancer sans --dry-run""",
     caption='Commande de migration')
@@ -1003,7 +1003,7 @@ python scripts/migrate_from_emergent.py \\
     add_code_block(doc, """\
 # settings.py Django — ajouter :
 STORAGE_BASE_URL   = env("STORAGE_BASE_URL",   default="http://localhost:8080")
-STORAGE_API_KEY    = env("STORAGE_API_KEY",    default="dev-api-key-sendbid-2024")
+STORAGE_API_KEY    = env("STORAGE_API_KEY",    default="dev-api-key")
 STORAGE_HMAC_SECRET = env("STORAGE_HMAC_SECRET", default="dev-hmac-secret")
 
 # Dans une vue Django :
@@ -1072,7 +1072,7 @@ client.delete_file(file_id, user_id=str(request.user.id))""",
 pip install pytest pytest-asyncio httpx aiosqlite
 
 # Lancer tous les tests
-cd sendbid-storage-service
+cd storagehub-service
 pytest tests/ -v
 
 # Lancer un fichier spécifique
@@ -1112,12 +1112,12 @@ docker-compose up -d
 docker-compose logs -f storage
 
 # Build manuel de l'image
-docker build -t sendbid-storage:1.0.0 .
+docker build -t storagehub:1.0.0 .
 
 # Variables d'env requises en production
 export API_KEY="votre-cle-api-securisee"
 export HMAC_SECRET="votre-hmac-secret-securise"
-export CDN_BASE_URL="https://storage.sendbid.com"
+export CDN_BASE_URL="https://storagehub.aiforge.world"
 docker-compose up -d""",
     caption='Commandes Docker')
 
@@ -1138,7 +1138,7 @@ docker-compose up -d""",
             'Configurer le firewall UFW (ports 80, 443, 22 uniquement)',
             'Vérifier que /uploads/kyc/ et /uploads/receipts/ renvoient 403 via URL directe',
             'Lancer le test de sécurité automatisé : pytest tests/test_security.py -v',
-            'Audit des permissions Linux : chown sendbid:sendbid, chmod 750',
+            'Audit des permissions Linux : chown storagehub:storagehub, chmod 750',
         ]),
         ('Configuration', [
             'Définir DATABASE_URL vers PostgreSQL (pas SQLite)',
@@ -1149,7 +1149,7 @@ docker-compose up -d""",
         ]),
         ('Sauvegarde', [
             'Initialiser le dépôt restic et configurer le mot de passe',
-            'Tester une sauvegarde manuelle : sudo -u sendbid /opt/sendbid/scripts/backup.sh',
+            'Tester une sauvegarde manuelle : sudo -u storagehub /opt/storagehub/scripts/backup.sh',
             'Ajouter le cron pour backup quotidien (2h du matin)',
             'Effectuer un test de restauration et documenter la procédure',
             'Configurer les alertes email/Slack',
@@ -1472,7 +1472,7 @@ def upload_kyc(file_obj, user_id):
 
     add_code_block(doc, """\
 BASE="http://localhost:8080"
-KEY="dev-api-key-sendbid-2024"
+KEY="dev-api-key"
 UID="user-001"
 
 # 1. Liveness probe
@@ -1536,7 +1536,7 @@ curl -s -X POST $BASE/v1/files \\
     add_horizontal_line(doc)
 
     doc.add_paragraph(
-        'Cette section explique comment fonctionne le service de stockage SENDBID et comment '
+        'Cette section explique comment fonctionne le service de stockage STORAGEHUB et comment '
         'l\'intégrer dans n\'importe quelle application — mobile, web ou backend.'
     )
 
@@ -1619,7 +1619,7 @@ Votre application                  Storage Service
     add_styled_table(doc,
         headers=['Header', 'Valeur', 'Obligatoire ?', 'Rôle'],
         rows=[
-            ['X-API-Key',    'dev-api-key-sendbid-2024',    'Toujours',       'Clé secrète partagée entre votre backend et le service'],
+            ['X-API-Key',    'dev-api-key',    'Toujours',       'Clé secrète partagée entre votre backend et le service'],
             ['X-User-Id',    'user-001 (ID de l\'utilisateur)', 'Recommandé', 'Permet au service de savoir qui fait la requête'],
             ['X-User-Role',  'user | admin | kyc_agent',    'Recommandé',     'Détermine les droits d\'accès aux fichiers'],
             ['X-Timestamp',  '1728385886',                  'Production',     'Timestamp Unix — protection anti-replay'],
@@ -1649,7 +1649,7 @@ Application Mobile / Site Web
          │  (2) Django valide, puis appelle le storage-service
          │
          ▼
- Storage Service (SENDBID)
+ Storage Service (STORAGEHUB)
          │
          │  (3) Stocke et retourne file_id + éventuellement url
          │
@@ -1773,7 +1773,7 @@ export async function uploadAvatar(userToken) {
   // Pas besoin d'envoyer category — votre endpoint Django le fixe à 'avatars'
 
   // 3. Envoyer à VOTRE backend Django
-  const response = await fetch('https://api.sendbid.com/users/avatar/', {
+  const response = await fetch('https://api.example.com/users/avatar/', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${userToken}`,  // Votre JWT utilisateur
@@ -1788,7 +1788,7 @@ export async function uploadAvatar(userToken) {
   }
 
   const data = await response.json();
-  // data.avatar_url = URL publique CDN, ex: http://cdn.sendbid.com/v1/public/avatars/uuid
+  // data.avatar_url = URL publique CDN, ex: http://cdn.aiforge.world/v1/public/avatars/uuid
   return data.avatar_url;
 }
 
@@ -1862,7 +1862,7 @@ export async function uploadKycDocument(userToken) {
   });
 
   // 3. Envoyer à VOTRE backend Django
-  const response = await fetch('https://api.sendbid.com/kyc/upload/', {
+  const response = await fetch('https://api.example.com/kyc/upload/', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${userToken}`,
@@ -1891,7 +1891,7 @@ function KycStatusScreen({ kycId, userToken }) {
 
   // Pour les agents KYC — demander une URL signée temporaire via Django
   const viewDocument = async () => {
-    const response = await fetch(`https://api.sendbid.com/kyc/${kycId}/view/`, {
+    const response = await fetch(`https://api.example.com/kyc/${kycId}/view/`, {
       headers: { 'Authorization': `Bearer ${userToken}` }
     });
     const data = await response.json();
@@ -2239,7 +2239,7 @@ async function viewDocument() {
 // ── storage.js — utilitaire générique (vanilla JS)
 // Fonctionne dans n'importe quelle page HTML
 
-const API_BASE = 'https://api.sendbid.com';  // Votre backend Django
+const API_BASE = 'https://api.example.com';  // Votre backend Django
 
 /**
  * Upload un fichier via le backend Django.
@@ -2389,7 +2389,7 @@ async function showKycDocument(kycId) {
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(80)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run('SAAS SENDBID — Storage Service')
+    run = p.add_run('StorageHub — Storage Service')
     run.font.size = Pt(16)
     run.font.bold = True
     run.font.color.rgb = C_PURPLE
@@ -2403,7 +2403,7 @@ async function showKycDocument(kycId) {
 
     add_horizontal_line(doc)
 
-    output_path = r'C:\Users\Albert WIB\sendbid-storage-service\SENDBID_StorageService_Documentation.docx'
+    output_path = r'C:\Users\Albert WIB\storagehub-service\STORAGEHUB_StorageService_Documentation.docx'
     doc.save(output_path)
     print(f'Document généré : {output_path}')
     return output_path

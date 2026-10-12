@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create dedicated user (no root)
-RUN useradd -m -u 1000 sendbid && \
+RUN useradd -m -u 1000 storagehub && \
     mkdir -p /var/app/uploads/avatars /var/app/uploads/kyc /var/app/uploads/receipts && \
-    chown -R sendbid:sendbid /var/app
+    chown -R storagehub:storagehub /var/app
 
 WORKDIR /app
 
@@ -23,13 +23,13 @@ COPY ui/ ./ui/
 COPY .env.example ./.env
 
 # Permissions
-RUN chown -R sendbid:sendbid /app
+RUN chown -R storagehub:storagehub /app
 RUN chmod 750 /var/app/uploads && \
     chmod 750 /var/app/uploads/avatars && \
     chmod 750 /var/app/uploads/kyc && \
     chmod 750 /var/app/uploads/receipts
 
-USER sendbid
+USER storagehub
 
 EXPOSE 8080
 

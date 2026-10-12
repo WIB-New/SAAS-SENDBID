@@ -1,6 +1,6 @@
 #!/bin/bash
 # ──────────────────────────────────────────────────────────────────────────────
-#  SAAS SENDBID — Disk monitoring script
+#  StorageHub — Disk monitoring script
 #  Sends alert when disk usage exceeds threshold.
 #  Schedule: every 15 minutes via cron (*/15 * * * *)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ set -euo pipefail
 
 UPLOAD_DIR="${UPLOAD_DIR:-/var/app/uploads}"
 THRESHOLD="${DISK_THRESHOLD:-80}"
-ALERT_EMAIL="${ALERT_EMAIL:-admin@sendbid.com}"
+ALERT_EMAIL="${ALERT_EMAIL:-admin@aiforge.world}"
 SLACK_WEBHOOK="${SLACK_WEBHOOK:-}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
@@ -32,13 +32,13 @@ done
 
 # ── Alert if threshold exceeded
 if [ "$DISK_PERCENT" -ge "$THRESHOLD" ]; then
-    MESSAGE="ALERT: SENDBID storage disk at ${DISK_PERCENT}% (threshold: ${THRESHOLD}%). Free: $(echo $DISK_INFO | awk '{print $3}')."
+    MESSAGE="ALERT: STORAGEHUB storage disk at ${DISK_PERCENT}% (threshold: ${THRESHOLD}%). Free: $(echo $DISK_INFO | awk '{print $3}')."
 
     log "ALERT: $MESSAGE"
 
     # Email alert
     if command -v mail &>/dev/null && [ -n "$ALERT_EMAIL" ]; then
-        echo "$MESSAGE" | mail -s "[SENDBID] Disk space alert" "$ALERT_EMAIL"
+        echo "$MESSAGE" | mail -s "[STORAGEHUB] Disk space alert" "$ALERT_EMAIL"
     fi
 
     # Slack alert

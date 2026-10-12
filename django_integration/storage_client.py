@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Django integration client
+StorageHub — Django integration client
 Replaces Emergent Object Storage SDK.
 
 Usage in Django views:
@@ -20,8 +20,8 @@ import requests
 
 # Load from Django settings or environment
 STORAGE_BASE_URL = os.getenv("STORAGE_BASE_URL", "http://localhost:8080")
-STORAGE_API_KEY = os.getenv("STORAGE_API_KEY", "dev-api-key-sendbid-2024")
-STORAGE_HMAC_SECRET = os.getenv("STORAGE_HMAC_SECRET", "dev-hmac-secret-sendbid-2024")
+STORAGE_API_KEY = os.getenv("STORAGE_API_KEY", "dev-api-key")
+STORAGE_HMAC_SECRET = os.getenv("STORAGE_HMAC_SECRET", "dev-hmac-secret")
 
 
 class StorageError(Exception):
@@ -31,7 +31,7 @@ class StorageError(Exception):
 
 class StorageClient:
     """
-    HTTP client for the SENDBID Storage Service.
+    HTTP client for the STORAGEHUB Storage Service.
     Handles authentication (API key + HMAC) transparently.
     """
 

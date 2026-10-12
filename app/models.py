@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — SQLAlchemy ORM models
+StorageHub — SQLAlchemy ORM models
 """
 import uuid
 from datetime import datetime

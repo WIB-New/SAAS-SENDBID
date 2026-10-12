@@ -1,4 +1,4 @@
-# SAAS SENDBID — Storage Service
+# StorageHub — Storage Service
 # Liste de tests d'intégration
 
 > **Comment lire ce document**
@@ -17,7 +17,7 @@
 | 1.3 | Headers de service présents | GET | `/v1/ping` | Headers `X-Request-ID`, `X-Service-Version`, `X-Response-Time` | 🤖 |
 | 1.4 | Request-ID transmis depuis le client | GET | `/v1/ping` + `X-Request-ID: my-id` | `X-Request-ID: my-id` en réponse | 🤖 |
 | 1.5 | Info service pour intégration | GET | `/v1/info` | `200` — liste catégories, limites, MIME autorisés | 🤖 |
-| 1.6 | Métriques Prometheus | GET | `/v1/metrics` | `200` texte brut avec `sendbid_disk_*` | 🤖 |
+| 1.6 | Métriques Prometheus | GET | `/v1/metrics` | `200` texte brut avec `storagehub_disk_*` | 🤖 |
 | 1.7 | Documentation Swagger accessible | GET | `/docs` | `200` — interface Swagger | 🖐️ |
 | 1.8 | Documentation ReDoc accessible | GET | `/redoc` | `200` — interface ReDoc | 🖐️ |
 
@@ -29,7 +29,7 @@
 |---|------|--------|---------|-------------|
 | 2.1 | Sans API Key | Aucun header | `401` | `MISSING_API_KEY` |
 | 2.2 | API Key invalide | `X-API-Key: wrong-key` | `403` | `INVALID_API_KEY` |
-| 2.3 | API Key correcte | `X-API-Key: dev-api-key-sendbid-2024` | `200/201` | — |
+| 2.3 | API Key correcte | `X-API-Key: dev-api-key` | `200/201` | — |
 | 2.4 | HMAC valide (production) | API Key + Timestamp + Signature | `200/201` | — |
 | 2.5 | HMAC avec timestamp expiré (>30s) | Timestamp ancien | `403` | `INVALID_HMAC` |
 | 2.6 | HMAC avec signature falsifiée | Signature altérée | `403` | `INVALID_HMAC` |
@@ -231,7 +231,7 @@
 
 ```bash
 BASE="http://localhost:8080"
-KEY="dev-api-key-sendbid-2024"
+KEY="dev-api-key"
 UID="user-001"
 
 # 1. Ping

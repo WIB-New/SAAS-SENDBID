@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Image processing utilities
+StorageHub — Image processing utilities
 - EXIF metadata stripping (GPS, device info, etc.)
 - Re-encoding to strip hidden payloads
 """

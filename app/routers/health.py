@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Health & monitoring endpoints
+StorageHub — Health & monitoring endpoints
 GET /health        — readiness probe (DB + disk)
 GET /v1/ping       — liveness probe (défini dans main.py)
 GET /v1/metrics    — métriques format Prometheus
@@ -84,27 +84,27 @@ async def metrics():
     disk_info = disk_data.pop("_disk", {})
 
     lines = [
-        "# HELP sendbid_disk_used_gb Disk space used in GB",
-        "# TYPE sendbid_disk_used_gb gauge",
-        f"sendbid_disk_used_gb {disk_info.get('used_gb', 0)}",
-        "# HELP sendbid_disk_free_gb Disk space free in GB",
-        "# TYPE sendbid_disk_free_gb gauge",
-        f"sendbid_disk_free_gb {disk_info.get('free_gb', 0)}",
-        "# HELP sendbid_disk_percent_used Disk usage percentage",
-        "# TYPE sendbid_disk_percent_used gauge",
-        f"sendbid_disk_percent_used {disk_info.get('percent', 0)}",
-        "# HELP sendbid_uptime_seconds Service uptime in seconds",
-        "# TYPE sendbid_uptime_seconds counter",
-        f"sendbid_uptime_seconds {round(time.time() - _start_time, 1)}",
+        "# HELP storagehub_disk_used_gb Disk space used in GB",
+        "# TYPE storagehub_disk_used_gb gauge",
+        f"storagehub_disk_used_gb {disk_info.get('used_gb', 0)}",
+        "# HELP storagehub_disk_free_gb Disk space free in GB",
+        "# TYPE storagehub_disk_free_gb gauge",
+        f"storagehub_disk_free_gb {disk_info.get('free_gb', 0)}",
+        "# HELP storagehub_disk_percent_used Disk usage percentage",
+        "# TYPE storagehub_disk_percent_used gauge",
+        f"storagehub_disk_percent_used {disk_info.get('percent', 0)}",
+        "# HELP storagehub_uptime_seconds Service uptime in seconds",
+        "# TYPE storagehub_uptime_seconds counter",
+        f"storagehub_uptime_seconds {round(time.time() - _start_time, 1)}",
     ]
     for cat, info in disk_data.items():
         lines += [
-            f'# HELP sendbid_category_size_mb Size in MB for category {cat}',
-            f'# TYPE sendbid_category_size_mb gauge',
-            f'sendbid_category_size_mb{{category="{cat}"}} {info.get("size_mb", 0)}',
-            f'# HELP sendbid_category_file_count File count for category {cat}',
-            f'# TYPE sendbid_category_file_count gauge',
-            f'sendbid_category_file_count{{category="{cat}"}} {info.get("file_count", 0)}',
+            f'# HELP storagehub_category_size_mb Size in MB for category {cat}',
+            f'# TYPE storagehub_category_size_mb gauge',
+            f'storagehub_category_size_mb{{category="{cat}"}} {info.get("size_mb", 0)}',
+            f'# HELP storagehub_category_file_count File count for category {cat}',
+            f'# TYPE storagehub_category_file_count gauge',
+            f'storagehub_category_file_count{{category="{cat}"}} {info.get("file_count", 0)}',
         ]
     return "\n".join(lines)
 
@@ -116,7 +116,7 @@ async def service_info():
     catégories acceptées, limites de taille, types MIME autorisés, TTL des URLs signées.
     """
     return {
-        "service":  "sendbid-storage",
+        "service":  "storagehub",
         "version":  "1.0.0",
         "env":      settings.app_env,
         "categories": {

@@ -92,7 +92,7 @@ footer{border-top:1px solid var(--line);padding:36px 0;color:var(--t3);font-size
     StorageHub <span style="color:var(--t3);font-weight:500;font-size:13px">/ Docs</span>
   </a>
   <div class="nv-r">
-    <a class="btn" href="/docs">Swagger ↗</a>
+    <a class="btn" href="/v1/ping">Statut API</a>
     <a class="btn pri" href="/ui/dashboard.html">Dashboard</a>
   </div>
 </div></nav>
@@ -119,8 +119,7 @@ footer{border-top:1px solid var(--line);padding:36px 0;color:var(--t3);font-size
     application — site web, app mobile ou backend — en quelques minutes.</p>
 
     <div class="note">Base URL : <b>https://storagehub.aiforge.world</b> ·
-    Référence interactive : <a href="/docs" style="color:var(--blue2)">Swagger UI</a> ·
-    <a href="/redoc" style="color:var(--blue2)">ReDoc</a></div>
+    Toutes les requêtes passent en HTTPS — TLS 1.3 obligatoire.</div>
 
     <!-- ═══ QUICKSTART ═══ -->
     <h2 id="start">Quickstart — 3 étapes</h2>
@@ -160,7 +159,7 @@ STORAGE_HMAC_SECRET=<span class="s">…</span></pre>
     la route publique avatars en lecture seule.</div>
 
     <!-- ═══ WEB ═══ -->
-    <h2 id="web">🌐 Site web / JavaScript</h2>
+    <h2 id="web">Site web / JavaScript</h2>
     <p>Le front-end ne doit <b>jamais</b> connaître votre <code>hmac_secret</code>.
     Pattern recommandé : votre backend génère les headers signés, le navigateur uploade.</p>
     <h3>Option A — via votre backend (recommandé)</h3>
@@ -180,7 +179,7 @@ img.src = url; <span class="c">// https://storagehub.aiforge.world/v1/public/ava
      alt=<span class="s">"avatar"</span> <span class="b">/&gt;</span></pre>
 
     <!-- ═══ MOBILE ═══ -->
-    <h2 id="mobile">📱 Application mobile</h2>
+    <h2 id="mobile">Application mobile</h2>
     <p>Même règle : le secret HMAC vit sur <b>votre serveur</b>, pas dans l'APK.
     L'app appelle votre backend, qui relaie vers StorageHub.</p>
     <h3>React Native — upload via votre backend</h3>
@@ -207,7 +206,7 @@ req.fields[<span class="s">'category'</span>] = <span class="s">'avatars'</span>
     directement le lien — il expire automatiquement.</div>
 
     <!-- ═══ SERVER ═══ -->
-    <h2 id="server">⚙️ Backend serveur</h2>
+    <h2 id="server">Backend serveur</h2>
     <h3>Python — signature + upload complet</h3>
 <pre><span class="b">import</span> hashlib, hmac, time, requests
 
@@ -256,7 +255,7 @@ curl -X POST https://storagehub.aiforge.world/v1/files \
   -F <span class="s">"file=@avatar.png"</span> -F <span class="s">"category=avatars"</span></pre>
 
     <!-- ═══ DJANGO ═══ -->
-    <h2 id="django">🐍 SDK Django clé-en-main</h2>
+    <h2 id="django">SDK Django clé-en-main</h2>
     <p>Le module <code>django_integration/storage_client.py</code> gère la signature
     automatiquement :</p>
 <pre><span class="b">from</span> django_integration.storage_client <span class="b">import</span> StorageClient
@@ -320,7 +319,7 @@ url = client.get_file_url(file_id, user_id=<span class="b">str</span>(request.us
   </main>
 </div>
 
-<footer>© 2026 WIB Company — SendBID / PayBID · <a href="/" style="color:var(--blue2)">StorageHub</a></footer>
+<footer>© 2026 WIB Company — StorageHub · <a href="/" style="color:var(--blue2)">StorageHub</a></footer>
 
 <script>
 // scroll-spy

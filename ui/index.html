@@ -1,472 +1,442 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>StorageHub — Cloud Storage API pour SendBID</title>
-<meta name="description" content="StorageHub — API de stockage sécurisé en SaaS. Comptes self-service, clés API par client, URLs signées, audit complet. Intégrez en minutes sur web, mobile ou serveur." />
-<meta property="og:title" content="StorageHub — Secure Storage API" />
-<meta property="og:description" content="API de stockage sécurisée en SaaS — créez un compte, générez vos clés, uploadez." />
-<meta property="og:type" content="website" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Cpath d='M10 21a4.5 4.5 0 0 1-.9-8.9 5.5 5.5 0 0 1 10.7-1.3A4.7 4.7 0 0 1 22 20.4V21H10z' fill='white'/%3E%3C/svg%3E" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>StorageHub — API de stockage sécurisé pour vos applications</title>
+<meta name="description" content="StorageHub : API de stockage de fichiers sécurisée. Authentification HMAC-SHA256, validation binaire, URLs signées, audit complet. Intégrez-la à vos sites web, apps mobiles et backends."/>
+<link rel="preconnect" href="https://images.unsplash.com"/>
 <style>
 :root{
-  --bg:#05070d; --bg2:#0a0f1c; --card:#0d1424; --card2:#111a30;
-  --line:rgba(148,163,255,.12); --line2:rgba(148,163,255,.2);
-  --blue:#3b82f6; --blue2:#60a5fa; --cyan:#22d3ee; --green:#34d399;
-  --amber:#fbbf24; --red:#f87171;
-  --text:#f0f4ff; --t2:#94a3c4; --t3:#5b6b95;
-  --mono:'JetBrains Mono',monospace; --r:18px;
+  --bg:#05080f; --bg2:#0a1120; --card:#0d1626; --card2:#111c30;
+  --line:#1c2b45; --line2:#25395c;
+  --txt:#e8eef9; --mut:#8fa3bf; --mut2:#5d7290;
+  --blue:#4f7dff; --blue2:#7ba1ff; --teal:#2dd4bf; --teal2:#5eead4;
+  --gold:#f5b14c; --red:#f87171;
+  --grad:linear-gradient(120deg,#4f7dff,#2dd4bf);
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
-  line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-::selection{background:rgba(59,130,246,.4)}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);line-height:1.6;overflow-x:hidden}
+::selection{background:#4f7dff44}
+h1,h2,h3,h4{font-family:Georgia,'Times New Roman',serif;font-weight:600;letter-spacing:-.01em}
+code,pre,.mono{font-family:'Cascadia Code','Fira Code',Consolas,monospace}
 a{color:inherit;text-decoration:none}
-code{font-family:var(--mono);font-size:.92em}
-.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+img{max-width:100%;display:block}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 26px;border-radius:10px;font-weight:600;font-size:.95rem;transition:.25s;cursor:pointer;border:0}
+.btn svg{width:16px;height:16px}
+.b-pri{background:var(--grad);color:#05080f}
+.b-pri:hover{transform:translateY(-2px);box-shadow:0 10px 34px #4f7dff55}
+.b-gho{background:transparent;color:var(--txt);border:1px solid var(--line2)}
+.b-gho:hover{border-color:var(--blue);background:#4f7dff0d}
+.tag{display:inline-flex;align-items:center;gap:7px;padding:4px 13px;border-radius:99px;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.t-teal{background:#2dd4bf18;color:var(--teal2);border:1px solid #2dd4bf33}
+.t-blue{background:#4f7dff18;color:var(--blue2);border:1px solid #4f7dff33}
+.t-gold{background:#f5b14c18;color:var(--gold);border:1px solid #f5b14c33}
+.t-red{background:#f8717118;color:var(--red);border:1px solid #f8717133}
+.kick{color:var(--teal);font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.kick::before{content:'';width:34px;height:1px;background:var(--grad)}
+
+/* ── NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#05080f88;backdrop-filter:blur(16px);border-bottom:1px solid #ffffff08}
+.nav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:72px}
+.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:1.18rem}
+.logo b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.nlinks{display:flex;gap:32px;align-items:center}
+.nlinks a{color:var(--mut);font-size:.92rem;transition:.2s}
+.nlinks a:hover{color:var(--txt)}
+.nav-cta{display:flex;gap:12px;align-items:center}
+.nav-cta .btn{padding:9px 20px;font-size:.87rem}
+.burger{display:none;background:none;border:1px solid var(--line);border-radius:8px;padding:8px;cursor:pointer}
+.burger svg{width:20px;height:20px;stroke:var(--txt)}
+@media(max-width:860px){
+  .burger{display:block}
+  .nlinks{position:fixed;top:72px;left:0;right:0;background:#0a1120f5;flex-direction:column;padding:28px;gap:20px;border-bottom:1px solid var(--line);display:none}
+  .nlinks.open{display:flex}
+  .nav-cta .btn.b-gho{display:none}
+}
+
+/* ── HERO */
+.hero{padding:158px 0 90px;position:relative}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.5;pointer-events:none}
+.o1{width:520px;height:520px;background:#4f7dff22;top:-140px;left:-160px}
+.o2{width:430px;height:430px;background:#2dd4bf1c;top:90px;right:-140px}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;position:relative}
+.hero h1{font-size:clamp(2.3rem,4.6vw,3.7rem);line-height:1.13;margin:20px 0 22px}
+.hero h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lead{color:var(--mut);font-size:1.09rem;max-width:530px;margin-bottom:34px}
+.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
+.hero-badges{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
+.hero-visual{position:relative}
+.hero-img{border-radius:20px;overflow:hidden;position:relative;border:1px solid var(--line);box-shadow:0 40px 80px #00000055;aspect-ratio:4/3;background:var(--card2)}
+.hero-img img{width:100%;height:100%;object-fit:cover;opacity:.85}
+.hero-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,#05080f99)}
+.hero-card{position:absolute;left:-28px;bottom:34px;background:#0d1626ee;border:1px solid var(--line);border-radius:14px;padding:16px 20px;backdrop-filter:blur(10px);box-shadow:0 20px 50px #00000066;display:flex;gap:13px;align-items:center}
+.hero-card svg{width:34px;height:34px;flex-shrink:0}
+.hero-card .hc-t{font-size:.8rem;color:var(--mut)}
+.hero-card .hc-v{font-weight:700;font-size:1rem}
+.hero-card .hc-v .ok{color:var(--teal2)}
+@media(max-width:940px){
+  .hero-grid{grid-template-columns:1fr;gap:44px}
+  .hero{padding-top:130px}
+  .hero-card{left:10px;bottom:14px}
+}
+
+/* ── TRUST BAND */
+.band{border-top:1px solid #ffffff0a;border-bottom:1px solid #ffffff0a;background:#0a112055}
+.band-in{display:flex;gap:0;flex-wrap:wrap}
+.bcell{flex:1;min-width:170px;padding:26px 24px;border-right:1px solid #ffffff08;text-align:center}
+.bcell:last-child{border-right:0}
+.bcell .bv{font-size:1.55rem;font-weight:700;font-family:Georgia,serif}
+.bcell .bv .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.bcell .bl{color:var(--mut2);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+
+/* ── SECTIONS */
 section{padding:100px 0}
-h2{font-size:clamp(30px,3.8vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1.12}
+.sec-head{max-width:660px;margin-bottom:56px}
+.sec-head h2{font-size:clamp(1.8rem,3.4vw,2.5rem);line-height:1.2;margin-bottom:14px}
+.sec-head p{color:var(--mut)}
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:940px){.fgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.fgrid{grid-template-columns:1fr}}
+.fcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 26px;transition:.3s;position:relative;overflow:hidden}
+.fcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad);opacity:0;transition:.3s}
+.fcard:hover{transform:translateY(-4px);border-color:#4f7dff55;background:var(--card2)}
+.fcard:hover::before{opacity:1}
+.fico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;background:#4f7dff12;border:1px solid #4f7dff30}
+.fico svg{width:22px;height:22px}
+.fcard h4{margin-bottom:8px;font-size:1.05rem}
+.fcard p{color:var(--mut);font-size:.9rem}
 
-/* ambient */
-.bg-fx{position:fixed;inset:0;z-index:-1}
-.bg-fx::before{content:'';position:absolute;inset:0;
-  background-image:linear-gradient(rgba(148,163,255,.03) 1px,transparent 1px),
-  linear-gradient(90deg,rgba(148,163,255,.03) 1px,transparent 1px);
-  background-size:60px 60px;
-  mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 25%,transparent 72%)}
-.glow{position:absolute;border-radius:50%;filter:blur(130px)}
-.g1{width:560px;height:560px;background:#1d4ed8;opacity:.32;top:-200px;left:-140px}
-.g2{width:460px;height:460px;background:#0891b2;opacity:.25;top:-60px;right:-120px}
-.g3{width:420px;height:420px;background:#2563eb;opacity:.16;top:900px;left:40%}
+/* ── SÉCURITÉ */
+.sec-dark{background:linear-gradient(180deg,#080d18,#0a1224);border-top:1px solid #ffffff08;border-bottom:1px solid #ffffff08}
+.sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+@media(max-width:940px){.sec-grid{grid-template-columns:1fr}}
+.sec-img{border-radius:18px;overflow:hidden;border:1px solid var(--line);position:relative;aspect-ratio:16/11;background:var(--card)}
+.sec-img img{width:100%;height:100%;object-fit:cover;opacity:.8}
+.sec-img::after{content:'';position:absolute;inset:0;background:linear-gradient(200deg,#4f7dff22,transparent 45%,#05080f77)}
+.seclist{display:flex;flex-direction:column;gap:0;margin-top:30px}
+.srow{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #ffffff0a;align-items:flex-start}
+.srow:last-child{border-bottom:0}
+.srow svg{width:20px;height:20px;flex-shrink:0;margin-top:3px}
+.srow b{display:block;font-size:.95rem}
+.srow span{color:var(--mut);font-size:.86rem}
 
-/* nav */
-nav{position:fixed;inset:0 0 auto;z-index:50;backdrop-filter:blur(16px);
-  background:rgba(5,7,13,.75);border-bottom:1px solid var(--line)}
-.nv{display:flex;align-items:center;justify-content:space-between;height:70px}
-.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:17.5px;letter-spacing:-.02em}
-.brand i{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
-  background:linear-gradient(135deg,var(--blue),#1d4ed8);box-shadow:0 6px 24px rgba(59,130,246,.45)}
-.brand svg{width:19px;height:19px}
-.nl{display:flex;gap:32px;font-size:14px;font-weight:500;color:var(--t2)}
-.nl a:hover{color:var(--text)}
-.nv-r{display:flex;gap:12px;align-items:center}
-@media(max-width:840px){.nl{display:none}}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:11px;
-  font-weight:600;font-size:14px;transition:.22s;cursor:pointer;border:0;font-family:inherit}
-.b-pri{background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;
-  box-shadow:0 4px 26px rgba(59,130,246,.4)}
-.b-pri:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(59,130,246,.55)}
-.b-gho{background:var(--card);border:1px solid var(--line2);color:var(--text)}
-.b-gho:hover{border-color:var(--blue);background:var(--card2)}
-
-/* hero */
-.hero{padding:170px 0 80px}
-.hg{display:grid;grid-template-columns:1.02fr .98fr;gap:60px;align-items:center}
-@media(max-width:960px){.hg{grid-template-columns:1fr;gap:52px}}
-.kicker{display:inline-flex;align-items:center;gap:9px;padding:7px 16px;border-radius:999px;
-  background:rgba(59,130,246,.09);border:1px solid rgba(59,130,246,.3);font-size:12.5px;
-  font-weight:600;color:var(--blue2);margin-bottom:26px}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);
-  box-shadow:0 0 12px var(--green);animation:pl 2s infinite}
-@keyframes pl{50%{opacity:.35}}
-h1{font-size:clamp(38px,5.2vw,62px);font-weight:900;line-height:1.05;letter-spacing:-.038em;margin-bottom:22px}
-.gr{background:linear-gradient(95deg,var(--blue2),var(--cyan));-webkit-background-clip:text;
-  background-clip:text;-webkit-text-fill-color:transparent}
-.lead{font-size:18px;color:var(--t2);max-width:530px;margin-bottom:36px}
-.cta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:42px}
-.meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--t3);font-size:13px}
-.mchip{font-family:var(--mono);font-size:11.5px;padding:5px 12px;border-radius:8px;
-  background:var(--card);border:1px solid var(--line);color:var(--t2)}
-
-/* hero visual — dashboard mock */
-.mock{background:var(--card);border:1px solid var(--line2);border-radius:20px;overflow:hidden;
-  box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 140px rgba(59,130,246,.12);
-  transform:perspective(1200px) rotateY(-4deg) rotateX(2deg)}
-@media(max-width:960px){.mock{transform:none}}
-.mock-bar{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}
-.mock-bar b{margin-left:8px;font-size:12px;color:var(--t3);font-weight:600}
-.mock-bar i{width:10px;height:10px;border-radius:50%}
-.mk-r{background:#f87171}.mk-y{background:#fbbf24}.mk-g{background:#34d399}
-.mock-in{padding:22px;display:grid;gap:14px}
-.mk-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;
-  background:var(--card2);border:1px solid var(--line);border-radius:12px;font-size:13px}
-.mk-key{font-family:var(--mono);font-size:12px;color:var(--blue2)}
-.tag{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.05em}
-.tag.on{background:rgba(52,211,153,.12);color:var(--green)}
-.tag.pub{background:rgba(34,211,238,.1);color:var(--cyan)}
-.tag.prv{background:rgba(251,191,36,.1);color:var(--amber)}
-.mk-bar{height:8px;border-radius:99px;background:rgba(148,163,255,.1);overflow:hidden;margin-top:8px}
-.mk-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
-.mk-h{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-
-/* stats */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);
-  border-radius:var(--r);overflow:hidden;background:var(--card);margin-top:70px}
-@media(max-width:760px){.stats{grid-template-columns:1fr 1fr}}
-.stat{padding:26px;border-right:1px solid var(--line)}
-.stat:last-child{border-right:0}
-.stat .k{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);font-weight:700;margin-bottom:7px}
-.stat .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
-.stat .v small{font-size:13px;color:var(--t3);font-weight:500}
-.ok{color:var(--green)}
-
-/* section head */
-.sh{text-align:center;max-width:660px;margin:0 auto 64px}
-.stag{display:inline-block;padding:6px 15px;border-radius:999px;font-size:11.5px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.1em;color:var(--blue2);
-  background:rgba(59,130,246,.09);border:1px solid rgba(59,130,246,.3);margin-bottom:18px}
-.sh p{color:var(--t2);font-size:16.5px;margin-top:14px}
-
-/* features */
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-@media(max-width:920px){.g3{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.g3{grid-template-columns:1fr}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  padding:30px 26px;transition:.25s;position:relative;overflow:hidden}
-.card:hover{transform:translateY(-5px);border-color:rgba(59,130,246,.45);
-  box-shadow:0 18px 50px rgba(0,0,0,.4)}
-.ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;margin-bottom:20px;
-  background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3)}
-.ic svg{width:22px;height:22px;stroke:var(--blue2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.ic.c{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3)}.ic.c svg{stroke:var(--cyan)}
-.ic.g{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3)}.ic.g svg{stroke:var(--green)}
-.card h3{font-size:17px;font-weight:700;margin-bottom:9px;letter-spacing:-.01em}
-.card p{font-size:14px;color:var(--t2)}
-
-/* categories */
+/* ── CATÉGORIES */
 .cats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-@media(max-width:920px){.cats{grid-template-columns:1fr}}
-.cat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.cat-top h3{font-size:19px}
-.spec{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);display:grid;gap:10px}
-.spec div{display:flex;justify-content:space-between;font-size:13px}
-.spec .k{color:var(--t3)}.spec .v{font-family:var(--mono);font-size:12px}
+@media(max-width:940px){.cats{grid-template-columns:1fr}}
+.cat{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;transition:.3s}
+.cat:hover{transform:translateY(-4px);border-color:#4f7dff55}
+.cat-img{height:140px;position:relative;overflow:hidden}
+.cat-img img{width:100%;height:100%;object-fit:cover;opacity:.7}
+.cat-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#0d162633,#0d1626)}
+.cat-img .tag{position:absolute;top:14px;left:14px;z-index:2}
+.cat-body{padding:24px}
+.cat-body h4{font-size:1.15rem;margin-bottom:8px}
+.cat-body>p{color:var(--mut);font-size:.88rem;margin-bottom:16px}
+.cat-specs{list-style:none}
+.cat-specs li{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid #ffffff08;font-size:.83rem}
+.cat-specs li span{color:var(--mut2)}
+.cat-specs li b{font-family:monospace;font-weight:600}
 
-/* docs preview tabs */
-.dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:36px}
-@media(max-width:920px){.dgrid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.dgrid{grid-template-columns:1fr}}
-.dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;
-  transition:.22s;display:block}
-.dcard:hover{border-color:var(--blue);transform:translateY(-3px)}
-.dcard .di{font-size:24px;margin-bottom:12px}
-.dcard h4{font-size:15px;font-weight:700;margin-bottom:4px}
-.dcard p{font-size:12.5px;color:var(--t3)}
+/* ── INTEGRATIONS */
+.dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:940px){.dgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.dgrid{grid-template-columns:1fr}}
+.dcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 22px;transition:.3s;display:block}
+.dcard:hover{transform:translateY(-4px);border-color:#2dd4bf66}
+.dcard .di{width:44px;height:44px;border-radius:12px;background:#2dd4bf12;border:1px solid #2dd4bf30;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.dcard .di svg{width:22px;height:22px}
+.dcard h4{font-size:.98rem;margin-bottom:6px}
+.dcard p{color:var(--mut);font-size:.83rem}
 
-/* pricing */
-.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
-@media(max-width:920px){.pricing{grid-template-columns:1fr}}
-.plan{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 30px;
-  display:flex;flex-direction:column;transition:.25s;position:relative}
-.plan:hover{transform:translateY(-6px)}
-.plan.pop{border-color:var(--blue);background:linear-gradient(180deg,rgba(59,130,246,.09),var(--card));
-  box-shadow:0 20px 60px rgba(59,130,246,.2)}
-.pop-tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
-  background:linear-gradient(90deg,var(--blue),var(--cyan));color:#fff;font-size:11px;
-  font-weight:800;padding:5px 16px;border-radius:99px;letter-spacing:.06em}
-.plan .pn{font-size:15px;font-weight:700;color:var(--blue2)}
-.plan .pr{font-size:44px;font-weight:900;letter-spacing:-.03em;margin:10px 0 4px}
-.plan .pr small{font-size:15px;color:var(--t3);font-weight:500}
-.plan .pd{font-size:13.5px;color:var(--t2);margin-bottom:26px}
-.plan ul{list-style:none;display:grid;gap:11px;margin-bottom:32px;flex:1}
-.plan li{display:flex;gap:10px;font-size:13.8px;color:var(--t2);align-items:flex-start}
-.plan li svg{width:17px;height:17px;stroke:var(--green);flex-shrink:0;margin-top:2px}
-.plan li b{color:var(--text);font-weight:600}
+/* ── PRICING */
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+@media(max-width:940px){.pgrid{grid-template-columns:1fr;max-width:440px;margin:0 auto}}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:34px 30px;position:relative;display:flex;flex-direction:column;transition:.3s}
+.pcard:hover{transform:translateY(-4px)}
+.pcard.feat{border:1px solid #4f7dff88;background:linear-gradient(180deg,#101c36,#0d1626);box-shadow:0 24px 60px #4f7dff22}
+.pbadge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--grad);color:#05080f;font-size:.7rem;font-weight:700;padding:5px 16px;border-radius:99px;letter-spacing:.06em;text-transform:uppercase}
+.pname{font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);font-weight:700}
+.pprice{font-size:2.6rem;font-family:Georgia,serif;font-weight:600;margin:14px 0 4px}
+.pprice span{font-size:.95rem;color:var(--mut2);font-family:'Segoe UI',sans-serif}
+.pdesc{color:var(--mut2);font-size:.86rem;margin-bottom:24px}
+.plist{list-style:none;margin-bottom:30px;flex:1}
+.plist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:.9rem;color:var(--mut)}
+.plist svg{width:17px;height:17px;flex-shrink:0;margin-top:3px}
+.pcard .btn{justify-content:center}
 
-/* cta */
-.cta-box{border-radius:26px;padding:76px 40px;text-align:center;position:relative;overflow:hidden;
-  background:linear-gradient(135deg,rgba(59,130,246,.16),rgba(34,211,238,.07));
-  border:1px solid rgba(59,130,246,.35)}
-.cta-box p{color:var(--t2);margin:14px 0 34px;font-size:16.5px}
-.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+/* ── CTA / FOOTER */
+.cta{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:64px 40px;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;width:600px;height:300px;background:#4f7dff18;filter:blur(90px);top:-100px;left:50%;transform:translateX(-50%)}
+.cta h2{font-size:clamp(1.7rem,3vw,2.4rem);margin-bottom:14px;position:relative}
+.cta p{color:var(--mut);margin-bottom:32px;position:relative}
+footer{border-top:1px solid #ffffff0a;padding:52px 0 30px;margin-top:100px}
+.fgrid2{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;margin-bottom:44px}
+@media(max-width:860px){.fgrid2{grid-template-columns:1fr 1fr}}
+@media(max-width:540px){.fgrid2{grid-template-columns:1fr}}
+footer h5{font-size:.8rem;text-transform:uppercase;letter-spacing:.14em;color:var(--mut2);margin-bottom:16px}
+footer ul{list-style:none}
+footer li{margin-bottom:10px}
+footer li a{color:var(--mut);font-size:.88rem;transition:.2s}
+footer li a:hover{color:var(--txt)}
+.fbrand p{color:var(--mut2);font-size:.86rem;max-width:280px;margin-top:12px}
+.fbot{border-top:1px solid #ffffff08;padding-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;color:var(--mut2);font-size:.82rem}
 
-footer{border-top:1px solid var(--line);padding:46px 0;color:var(--t3);font-size:13.5px}
-.ft{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px}
-.fl{display:flex;gap:26px}
-.fl a:hover{color:var(--text)}
-
-.rv{opacity:0;transform:translateY(26px);transition:opacity .7s,transform .7s}
-.rv.on{opacity:1;transform:none}
+/* ── Reveal animation */
+.rv{opacity:0;transform:translateY(26px);transition:.7s cubic-bezier(.2,.7,.3,1)}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
 <body>
 
-<div class="bg-fx"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div></div>
+<nav><div class="nav-in">
+  <a class="logo" href="/">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="url(#lg)" stroke-width="1.8"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="url(#lg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4f7dff"/><stop offset="1" stop-color="#2dd4bf"/></linearGradient></defs></svg>
+    Storage<b>Hub</b>
+  </a>
+  <div class="nlinks" id="navLinks">
+    <a href="#features">Produit</a>
+    <a href="#security">Sécurité</a>
+    <a href="#integrations">Intégrations</a>
+    <a href="#pricing">Tarifs</a>
+    <a href="/ui/docs.html">Documentation</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn b-gho" href="/ui/dashboard.html">Connexion</a>
+    <a class="btn b-pri" href="/ui/dashboard.html">Commencer</a>
+    <button class="burger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</div></nav>
 
-<nav>
-  <div class="wrap nv">
-    <a class="brand" href="/">
-      <i><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M7 17.5a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.2 4.3 4.3 0 0 1 18 17v.5H7z"/></svg></i>
-      StorageHub
-    </a>
-    <div class="nl">
-      <a href="#features">Produit</a>
-      <a href="#categories">Catégories</a>
-      <a href="#pricing">Tarifs</a>
-      <a href="/ui/docs.html">Documentation</a>
+<!-- ═══ HERO ═══ -->
+<header class="hero"><div class="orb o1"></div><div class="orb o2"></div>
+<div class="wrap"><div class="hero-grid">
+  <div>
+    <span class="tag t-blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>API de stockage · Production</span>
+    <h1>Le stockage de fichiers <em>sécurisé</em>, conçu pour vos applications</h1>
+    <p class="lead">Une API prête pour la production, accessible depuis vos sites web, applications mobiles et serveurs. Authentification HMAC-SHA256, validation par signature binaire, URLs signées et journalisation complète — inclus d'office.</p>
+    <div class="hero-btns">
+      <a class="btn b-pri" href="/ui/dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Créer un compte gratuit</a>
+      <a class="btn b-gho" href="/ui/docs.html">Voir la documentation</a>
     </div>
-    <div class="nv-r">
-      <a class="btn b-gho" href="/ui/dashboard.html">Se connecter</a>
-      <a class="btn b-pri" href="/ui/dashboard.html#register">Commencer →</a>
+    <div class="hero-badges">
+      <span class="tag t-teal"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Chiffrement TLS</span>
+      <span class="tag t-teal"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Isolation multi-tenant</span>
+      <span class="tag t-gold"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9.2"/></svg><span id="upBadge">Disponibilité …</span></span>
     </div>
   </div>
-</nav>
-
-<!-- ══════ HERO ══════ -->
-<header class="hero">
-  <div class="wrap hg">
-    <div>
-      <div class="kicker"><span class="pulse"></span> v1.0.0 · API en production · SLA-ready</div>
-      <h1>L'API de stockage<br><span class="gr">sécurisé en SaaS</span><br>pour vos fichiers</h1>
-      <p class="lead">
-        Créez un compte, générez vos clés API et uploadez en minutes — depuis votre
-        site web, votre app mobile ou votre backend. Validation magic bytes,
-        purge EXIF, URLs signées et audit complet inclus.
-      </p>
-      <div class="cta">
-        <a class="btn b-pri" href="/ui/dashboard.html#register">
-          Créer un compte gratuit
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
-        </a>
-        <a class="btn b-gho" href="/ui/docs.html">Voir la documentation</a>
-      </div>
-      <div class="meta">
-        <span class="mchip">FastAPI</span><span class="mchip">PostgreSQL</span>
-        <span class="mchip">HMAC-SHA256</span><span class="mchip">Docker</span>
-        <span>WIB Company</span>
-      </div>
+  <div class="hero-visual rv">
+    <div class="hero-img">
+      <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80" alt="Infrastructure de centre de données" loading="eager" onerror="this.style.display='none'"/>
     </div>
-
-    <div class="mock">
-      <div class="mock-bar"><i class="mk-r"></i><i class="mk-y"></i><i class="mk-g"></i>
-        <b>dashboard.storagehub</b></div>
-      <div class="mock-in">
-        <div class="mk-h">Clés API — Production</div>
-        <div class="mk-row"><span><span class="mk-key">shk_live_7f3a…9c2e</span><br>
-          <small style="color:var(--t3)">Backend Django</small></span>
-          <span class="tag on">Active</span></div>
-        <div class="mk-row"><span><span class="mk-key">shk_live_b21d…44f0</span><br>
-          <small style="color:var(--t3)">App mobile</small></span>
-          <span class="tag on">Active</span></div>
-        <div class="mk-row"><span>Utilisation — plan Pro</span><span class="mk-key">12.4 / 50 GB</span></div>
-        <div class="mk-bar"><i style="width:25%"></i></div>
-        <div class="mk-row"><span>Fichiers stockés</span><span class="tag pub">1 284 avatars</span>
-          <span class="tag prv">312 kyc</span></div>
-      </div>
+    <div class="hero-card">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="#2dd4bf" stroke-width="1.8"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="#2dd4bf" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><div class="hc-t">État du service</div><div class="hc-v"><span class="ok">●</span> <span id="hcStatus">Opérationnel</span></div></div>
     </div>
   </div>
-
-  <div class="wrap">
-    <div class="stats rv">
-      <div class="stat"><div class="k">Statut</div>
-        <div class="v" id="st-status">—</div></div>
-      <div class="stat"><div class="k">Uptime</div>
-        <div class="v" id="st-uptime">—</div></div>
-      <div class="stat"><div class="k">Base de données</div>
-        <div class="v" id="st-db">—</div></div>
-      <div class="stat"><div class="k">Disque</div>
-        <div class="v" id="st-disk">—</div></div>
-    </div>
-  </div>
+</div></div>
 </header>
 
-<!-- ══════ FEATURES ══════ -->
-<section id="features">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="stag">Sécurité by design</div>
-      <h2>Chaque couche pensée pour la confiance</h2>
-      <p>Conçu pour les documents sensibles — KYC, reçus de paiement — avec une
-      séparation stricte entre contenu public et privé.</p>
-    </div>
-    <div class="g3">
-      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
-        <h3>Clés API par client</h3>
-        <p>Chaque client génère ses propres paires <code>api_key</code> + <code>hmac_secret</code> depuis son dashboard. Révocation en un clic, quotas par plan.</p></div>
-      <div class="card rv"><div class="ic c"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <h3>Signature HMAC-SHA256</h3>
-        <p>Chaque requête est signée avec timestamp anti-rejeu (fenêtre 30 s). Le secret ne transite jamais sur le réseau.</p></div>
-      <div class="card rv"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13l2 2 4-4"/></svg></div>
-        <h3>Validation magic bytes</h3>
-        <p>Le type MIME réel est détecté depuis le contenu. Exécutables, scripts et archives suspectes sont rejetés avant écriture.</p></div>
-      <div class="card rv"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg></div>
-        <h3>URLs signées à TTL</h3>
-        <p>Partagez un fichier sensible via un lien HMAC expirant — plafonné selon le plan (60 s → 1 h).</p></div>
-      <div class="card rv"><div class="ic c"><svg viewBox="0 0 24 24"><path d="M12 3c-2 5-6 7-6 12a6 6 0 0 0 12 0c0-5-4-7-6-12z"/></svg></div>
-        <h3>Purge EXIF</h3>
-        <p>GPS, appareil, horodatage : les métadonnées sont supprimées et l'image ré-encodée avant stockage.</p></div>
-      <div class="card rv"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg></div>
-        <h3>Audit &amp; métriques</h3>
-        <p>Journal d'accès en base (qui, quand, IP, action), health checks et endpoint <code>/v1/metrics</code> compatible Prometheus.</p></div>
-    </div>
-  </div>
-</section>
+<!-- ═══ BANDE CONFIANCE ═══ -->
+<div class="band"><div class="band-in wrap" style="padding:0 24px">
+  <div class="bcell"><div class="bv"><span class="g">HMAC</span>-SHA256</div><div class="bl">Signature des requêtes</div></div>
+  <div class="bcell"><div class="bv"><span class="g">Magic</span> bytes</div><div class="bl">Validation binaire</div></div>
+  <div class="bcell"><div class="bv"><span class="g" id="stUptime">—</span></div><div class="bl">Uptime courant</div></div>
+  <div class="bcell"><div class="bv"><span class="g" id="stDb">—</span></div><div class="bl">Base de données</div></div>
+  <div class="bcell"><div class="bv"><span class="g" id="stDisk">—</span></div><div class="bl">Disque utilisé</div></div>
+</div></div>
 
-<!-- ══════ CATEGORIES ══════ -->
-<section id="categories" style="background:var(--bg2);border-block:1px solid var(--line)">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="stag">Trois catégories, deux mondes</div>
-      <h2>Public ou privé — jamais les deux</h2>
-      <p>La catégorie détermine l'exposition : les avatars sont publics avec cache
-      longue durée, KYC et reçus exigent authentification et audit.</p>
-    </div>
-    <div class="cats">
-      <div class="card rv">
-        <div class="cat-top"><h3>Avatars</h3><span class="tag pub">Public</span></div>
-        <p>Photos de profil servies publiquement, cache immutable 1 an.</p>
-        <div class="spec">
-          <div><span class="k">Taille max</span><span class="v">5 MB</span></div>
-          <div><span class="k">Formats</span><span class="v">JPEG · PNG · WebP</span></div>
-          <div><span class="k">Accès</span><span class="v">/v1/public/avatars/{id}</span></div>
-        </div>
-      </div>
-      <div class="card rv">
-        <div class="cat-top"><h3>Documents KYC</h3><span class="tag prv">Privé</span></div>
-        <p>Pièces d'identité — accès propriétaire/agent, chaque lecture journalisée.</p>
-        <div class="spec">
-          <div><span class="k">Taille max</span><span class="v">10 MB</span></div>
-          <div><span class="k">Formats</span><span class="v">JPEG · PNG · PDF</span></div>
-          <div><span class="k">Accès</span><span class="v">auth + audit + signed URL</span></div>
-        </div>
-      </div>
-      <div class="card rv">
-        <div class="cat-top"><h3>Reçus</h3><span class="tag prv">Privé</span></div>
-        <p>Justificatifs de transaction — même isolation stricte que le KYC.</p>
-        <div class="spec">
-          <div><span class="k">Taille max</span><span class="v">10 MB</span></div>
-          <div><span class="k">Formats</span><span class="v">JPEG · PNG · PDF</span></div>
-          <div><span class="k">Accès</span><span class="v">auth + audit + signed URL</span></div>
-        </div>
-      </div>
-    </div>
+<!-- ═══ FEATURES ═══ -->
+<section id="features"><div class="wrap">
+  <div class="sec-head rv">
+    <div class="kick">Fonctionnalités</div>
+    <h2>Une infrastructure complète, exposée en API</h2>
+    <p>Tout ce qu'il faut pour servir des fichiers en production — sans construire votre propre infrastructure de stockage.</p>
   </div>
-</section>
+  <div class="fgrid">
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/><circle cx="12" cy="15" r="1.6" fill="#7ba1ff" stroke="none"/></svg></div>
+      <h4>Signature HMAC-SHA256</h4><p>Chaque requête est signée avec votre secret et un timestamp à tolérance contrôlée — les requêtes falsifiées sont rejetées.</p></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z"/><path d="M8.5 12l2.4 2.4 4.6-4.8"/></svg></div>
+      <h4>Validation par magic bytes</h4><p>Le type réel de chaque fichier est vérifié par sa signature binaire. Exécutables et fichiers falsifiés : refusés.</p></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11l-.8 8.5L19.5 10H13l.8-8z" transform="scale(.92) translate(1,1)"/><path d="M13 2L4.5 13.5H11l-.8 8.5L19.5 10H13l.8-8z"/></svg></div>
+      <h4>URLs signées à durée limitée</h4><p>Partagez un accès temporaire sans exposer vos identifiants. La durée de vie est plafonnée par votre plan.</p></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.8"/><path d="M3 17l5-4 4 3 4-3 5 4"/></svg></div>
+      <h4>Purge des métadonnées EXIF</h4><p>Les images sont ré-encodées : GPS, modèle d'appareil et horodatages sensibles sont supprimés automatiquement.</p></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/><circle cx="18" cy="18" r="3.4"/><path d="M17 18l.9.9 1.7-1.8"/></svg></div>
+      <h4>Audit exhaustif</h4><p>Uploads, téléchargements et suppressions sont journalisés avec request_id et checksum SHA-256.</p></div>
+    <div class="fcard rv"><div class="fico"><svg viewBox="0 0 24 24" fill="none" stroke="#7ba1ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a1 1 0 011-1h14a1 1 0 011 1v14"/><path d="M4 19h16M4 19a1.5 1.5 0 010-3h16a1.5 1.5 0 010 3" transform="translate(0,-.5)"/><path d="M8 8h.01M8 11h.01M8 14h.01"/></svg></div>
+      <h4>Observabilité intégrée</h4><p>Santé du service, métriques disque et compteurs par catégorie exposés au format Prometheus.</p></div>
+  </div>
+</div></section>
 
-<!-- ══════ DOCS PREVIEW ══════ -->
-<section id="docs">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="stag">Documentation complète</div>
-      <h2>Intégrez où vous voulez</h2>
-      <p>Guides pas-à-pas pour chaque plateforme — site web, application mobile
-      ou backend serveur.</p>
+<!-- ═══ SÉCURITÉ ═══ -->
+<section class="sec-dark" id="security"><div class="wrap">
+  <div class="sec-grid">
+    <div class="rv">
+      <div class="kick">Sécurité</div>
+      <h2 style="font-size:clamp(1.8rem,3.4vw,2.5rem);line-height:1.2;margin-bottom:14px">Vos fichiers sensibles sous contrôle strict</h2>
+      <p style="color:var(--mut)">Chaque couche de la plateforme applique une politique de sécurité explicite. Les documents privés ne sont jamais exposés publiquement.</p>
+      <div class="seclist">
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Isolation par tenant</b><span>Chaque client ne voit que ses propres fichiers — aucun accès croisé possible.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Secrets par client</b><span>Chaque clé API possède son propre secret HMAC, révocable instantanément.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Téléchargements journalisés</b><span>Chaque accès à un document privé est tracé avec l'identité du demandeur.</span></div></div>
+        <div class="srow"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Défense en profondeur</b><span>Validation MIME + signature binaire + quotas + traversal neutralisé.</span></div></div>
+      </div>
     </div>
-    <div class="dgrid">
-      <a class="dcard rv" href="/ui/docs.html#web"><div class="di">🌐</div><h4>Site web / SPA</h4><p>JavaScript fetch, FormData, prévisualisations</p></a>
-      <a class="dcard rv" href="/ui/docs.html#mobile"><div class="di">📱</div><h4>App mobile</h4><p>React Native &amp; Flutter — upload depuis la caméra</p></a>
-      <a class="dcard rv" href="/ui/docs.html#server"><div class="di">⚙️</div><h4>Backend serveur</h4><p>Python, Node.js, cURL — signature HMAC complète</p></a>
-      <a class="dcard rv" href="/ui/docs.html#errors"><div class="di">📖</div><h4>Référence API</h4><p>Endpoints, codes d'erreur, limites par plan</p></a>
-    </div>
-    <div style="text-align:center" class="rv">
-      <a class="btn b-gho" href="/ui/docs.html">Ouvrir la documentation complète →</a>
+    <div class="sec-img rv">
+      <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80" alt="Sécurité numérique" loading="lazy" onerror="this.style.display='none'"/>
     </div>
   </div>
-</section>
+</div></section>
 
-<!-- ══════ PRICING ══════ -->
-<section id="pricing" style="background:var(--bg2);border-block:1px solid var(--line)">
-  <div class="wrap">
-    <div class="sh rv">
-      <div class="stag">Tarifs</div>
-      <h2>Un plan pour chaque étape</h2>
-      <p>Commencez gratuitement, évoluez sans friction. Changement de plan
-      instantané depuis votre dashboard.</p>
+<!-- ═══ CATÉGORIES ═══ -->
+<section id="categories"><div class="wrap">
+  <div class="sec-head rv">
+    <div class="kick">Catégories de fichiers</div>
+    <h2>Trois classes de stockage, des politiques d'accès distinctes</h2>
+    <p>Séparez le contenu public du contenu sensible dès l'upload — la catégorie définit l'exposition.</p>
+  </div>
+  <div class="cats">
+    <div class="cat rv">
+      <div class="cat-img"><span class="tag t-teal">Public</span><img src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=800&q=80" alt="" loading="lazy" onerror="this.style.display='none'"/></div>
+      <div class="cat-body"><h4>Avatars</h4><p>Photos de profil servies publiquement — prêtes pour un CDN.</p>
+        <ul class="cat-specs"><li><span>Exposition</span><b>publique</b></li><li><span>Taille max</span><b>5 MB</b></li><li><span>Formats</span><b>JPEG · PNG · WebP</b></li></ul></div>
     </div>
-    <div class="pricing">
-      <div class="plan rv">
-        <div class="pn">Gratuit</div>
-        <div class="pr">0€<small>/mois</small></div>
-        <div class="pd">Pour tester et prototyper.</div>
-        <ul>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>500 MB</b> de stockage</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>1 clé API</b> active</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>URLs signées <b>60 s</b> max</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>3 catégories de fichiers</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Support community</span></li>
-        </ul>
-        <a class="btn b-gho" href="/ui/dashboard.html#register" style="justify-content:center">Commencer</a>
-      </div>
-      <div class="plan pop rv">
-        <div class="pop-tag">POPULAIRE</div>
-        <div class="pn">Pro</div>
-        <div class="pr">19€<small>/mois</small></div>
-        <div class="pd">Pour les applications en production.</div>
-        <ul>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>50 GB</b> de stockage</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>3 clés API</b> actives</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>URLs signées <b>5 min</b> max</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Audit trail complet</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Support email 24 h</span></li>
-        </ul>
-        <a class="btn b-pri" href="/ui/dashboard.html#register" style="justify-content:center">Passer Pro</a>
-      </div>
-      <div class="plan rv">
-        <div class="pn">Business</div>
-        <div class="pr">79€<small>/mois</small></div>
-        <div class="pd">Pour les plateformes à fort volume.</div>
-        <ul>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>500 GB</b> de stockage</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span><b>10 clés API</b> actives</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>URLs signées <b>1 h</b> max</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Audit trail complet</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4"><path d="M5 13l4 4 10-10"/></svg><span>Support prioritaire + SLA</span></li>
-        </ul>
-        <a class="btn b-gho" href="/ui/dashboard.html#register" style="justify-content:center">Passer Business</a>
-      </div>
+    <div class="cat rv">
+      <div class="cat-img"><span class="tag t-gold">Privé</span><img src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80" alt="" loading="lazy" onerror="this.style.display='none'"/></div>
+      <div class="cat-body"><h4>Documents KYC</h4><p>Pièces d'identité et justificatifs — accès authentifié et audité.</p>
+        <ul class="cat-specs"><li><span>Exposition</span><b>privée</b></li><li><span>Taille max</span><b>10 MB</b></li><li><span>Formats</span><b>JPEG · PNG · WebP · PDF</b></li></ul></div>
+    </div>
+    <div class="cat rv">
+      <div class="cat-img"><span class="tag t-gold">Privé</span><img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=800&q=80" alt="" loading="lazy" onerror="this.style.display='none'"/></div>
+      <div class="cat-body"><h4>Reçus &amp; justificatifs</h4><p>Preuves de transaction et pièces comptables sensibles.</p>
+        <ul class="cat-specs"><li><span>Exposition</span><b>privée</b></li><li><span>Taille max</span><b>10 MB</b></li><li><span>Formats</span><b>JPEG · PNG · WebP · PDF</b></li></ul></div>
     </div>
   </div>
-</section>
+</div></section>
 
-<!-- ══════ CTA ══════ -->
-<section>
-  <div class="wrap">
-    <div class="cta-box rv">
-      <h2>Prêt à stocker <span class="gr">en toute confiance</span> ?</h2>
-      <p>Compte gratuit en 30 secondes — vos credentials API sont générés instantanément.</p>
-      <div class="cta-btns">
-        <a class="btn b-pri" href="/ui/dashboard.html#register">Créer mon compte</a>
-        <a class="btn b-gho" href="/docs">Swagger UI</a>
-        <a class="btn b-gho" href="/ui/docs.html">Guides d'intégration</a>
-      </div>
-    </div>
+<!-- ═══ INTÉGRATIONS ═══ -->
+<section class="sec-dark" id="integrations"><div class="wrap">
+  <div class="sec-head rv">
+    <div class="kick">Intégrations</div>
+    <h2>Conçue pour toutes vos plateformes</h2>
+    <p>Guides et exemples de code prêts à l'emploi pour chaque environnement.</p>
   </div>
-</section>
+  <div class="dgrid">
+    <a class="dcard rv" href="/ui/docs.html#web"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="4" width="19" height="14" rx="2"/><path d="M2.5 8.5h19M6 6.4h.01M8.5 6.4h.01"/></svg></div><h4>Site web / SPA</h4><p>JavaScript, fetch, FormData et prévisualisations</p></a>
+    <a class="dcard rv" href="/ui/docs.html#mobile"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 18.5h3"/></svg></div><h4>Application mobile</h4><p>React Native &amp; Flutter — upload depuis la caméra</p></a>
+    <a class="dcard rv" href="/ui/docs.html#server"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="4" width="18" height="7" rx="1.6"/><rect x="3" y="13" width="18" height="7" rx="1.6"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h5M11 16.5h5"/></svg></div><h4>Backend serveur</h4><p>Python, Node.js, cURL — signature HMAC complète</p></a>
+    <a class="dcard rv" href="/ui/docs.html#errors"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a1.5 1.5 0 00-1.5 1.5v15A1.5 1.5 0 005 21h3M16 3h3a1.5 1.5 0 011.5 1.5v15A1.5 1.5 0 0119 21h-3"/><path d="M10 8l-3 4 3 4M14 8l3 4-3 4"/></svg></div><h4>Référence API</h4><p>Endpoints, codes d'erreur, limites par plan</p></a>
+  </div>
+</div></section>
 
-<footer>
-  <div class="wrap ft">
-    <span>© 2026 <strong>WIB Company</strong> — SendBID / PayBID · StorageHub v1.0.0</span>
-    <div class="fl">
-      <a href="/ui/docs.html">Docs</a>
-      <a href="/ui/dashboard.html">Dashboard</a>
-      <a href="/health">Status</a>
-      <a href="/v1/metrics">Métriques</a>
+<!-- ═══ TARIFS ═══ -->
+<section id="pricing"><div class="wrap">
+  <div class="sec-head rv" style="text-align:center;margin-left:auto;margin-right:auto">
+    <div class="kick" style="justify-content:center">Tarifs</div>
+    <h2>Des plans qui grandissent avec vous</h2>
+    <p>Commencez gratuitement. Passez à l'échelle quand votre produit décolle.</p>
+  </div>
+  <div class="pgrid">
+    <div class="pcard rv">
+      <div class="pname">Gratuit</div>
+      <div class="pprice">0€<span> / mois</span></div>
+      <div class="pdesc">Pour tester et prototyper</div>
+      <ul class="plist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>500 MB</b> de stockage</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>1 clé API</b> active</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>60 s</b></span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support communautaire</span></li>
+      </ul>
+      <a class="btn b-gho" href="/ui/dashboard.html">Commencer</a>
+    </div>
+    <div class="pcard feat rv">
+      <div class="pbadge">Populaire</div>
+      <div class="pname">Pro</div>
+      <div class="pprice">19€<span> / mois</span></div>
+      <div class="pdesc">Pour les produits en production</div>
+      <ul class="plist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>50 GB</b> de stockage</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>3 clés API</b> actives</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>5 min</b></span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support prioritaire</span></li>
+      </ul>
+      <a class="btn b-pri" href="/ui/dashboard.html">Choisir Pro</a>
+    </div>
+    <div class="pcard rv">
+      <div class="pname">Business</div>
+      <div class="pprice">79€<span> / mois</span></div>
+      <div class="pdesc">Pour les plateformes à fort volume</div>
+      <ul class="plist">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>500 GB</b> de stockage</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>10 clés API</b> actives</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>URLs signées jusqu'à <b>1 heure</b></span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span>Support dédié &amp; SLA</span></li>
+      </ul>
+      <a class="btn b-gho" href="/ui/dashboard.html">Choisir Business</a>
     </div>
   </div>
-</footer>
+</div></section>
+
+<!-- ═══ CTA ═══ -->
+<section style="padding-top:20px"><div class="wrap">
+  <div class="cta rv">
+    <h2>Prêt à intégrer ?</h2>
+    <p>Créez votre compte et générez vos premières clés API en moins d'une minute.</p>
+    <a class="btn b-pri" href="/ui/dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Créer un compte</a>
+  </div>
+</div></section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer><div class="wrap">
+  <div class="fgrid2">
+    <div class="fbrand">
+      <a class="logo" href="/"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3.5v5.7c0 5.2-3.4 9.2-8 10.8-4.6-1.6-8-5.6-8-10.8V5.5L12 2z" stroke="url(#lg2)" stroke-width="1.8"/><defs><linearGradient id="lg2" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4f7dff"/><stop offset="1" stop-color="#2dd4bf"/></linearGradient></defs></svg> Storage<b>Hub</b></a>
+      <p>API de stockage de fichiers sécurisée pour les applications modernes. Hébergé et exploité par WIB Company.</p>
+    </div>
+    <div><h5>Produit</h5><ul>
+      <li><a href="#features">Fonctionnalités</a></li>
+      <li><a href="#security">Sécurité</a></li>
+      <li><a href="#pricing">Tarifs</a></li>
+      <li><a href="#categories">Catégories</a></li>
+    </ul></div>
+    <div><h5>Développeurs</h5><ul>
+      <li><a href="/ui/docs.html">Documentation</a></li>
+      <li><a href="/ui/docs.html#web">Intégration web</a></li>
+      <li><a href="/ui/docs.html#mobile">Intégration mobile</a></li>
+      <li><a href="/ui/docs.html#errors">Codes d'erreur</a></li>
+    </ul></div>
+    <div><h5>Compte</h5><ul>
+      <li><a href="/ui/dashboard.html">Dashboard</a></li>
+      <li><a href="/ui/dashboard.html">Créer un compte</a></li>
+      <li><a href="/v1/ping">Statut API</a></li>
+    </ul></div>
+  </div>
+  <div class="fbot">
+    <span>© 2025 StorageHub — WIB Company</span>
+    <span>storagehub.aiforge.world</span>
+  </div>
+</div></footer>
 
 <script>
-const io = new IntersectionObserver(es =>
-  es.forEach(e => e.isIntersecting && e.target.classList.add('on')), {threshold:.1});
+const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add('in')), {threshold:.12});
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
 
-function fmtUp(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
-  return h?`${h}h ${m}m`:(m?`${m}m`:`${Math.floor(s)}s`)}
-fetch('/health').then(r=>r.json()).then(h=>{
-  document.getElementById('st-status').innerHTML =
-    h.status==='ok'?'<span class="ok">● Opérationnel</span>':'<span style="color:#fbbf24">● Dégradé</span>';
-  document.getElementById('st-uptime').textContent = fmtUp(h.uptime_seconds||0);
-  document.getElementById('st-db').innerHTML =
-    h.db==='ok'?'<span class="ok">Connectée</span>':'<span style="color:#f87171">Erreur</span>';
-  const d=h.disk_usage||{};
-  document.getElementById('st-disk').innerHTML =
-    `${d.percent??'—'}<small>% · ${d.free_gb??'?'} GB libres</small>`;
-}).catch(()=>{document.getElementById('st-status').innerHTML='<span style="color:#f87171">● Injoignable</span>'});
+fetch('/health').then(r => r.json()).then(d => {
+  const h = Math.floor((d.uptime_seconds||0)/3600), m = Math.floor(((d.uptime_seconds||0)%3600)/60);
+  document.getElementById('stUptime').textContent = h>0 ? h+'h '+m+'m' : m+'m';
+  document.getElementById('stDb').textContent = d.checks?.db === 'ok' ? 'OK' : 'N/A';
+  document.getElementById('stDisk').textContent = (d.disk?.percent!=null ? d.disk.percent+'%' : '—');
+  document.getElementById('upBadge').textContent = 'Opérationnel · '+(h>0?h+'h':m+'min');
+  document.getElementById('hcStatus').textContent = d.status === 'ok' ? 'Opérationnel' : 'Dégradé';
+}).catch(() => {
+  document.getElementById('hcStatus').textContent = 'Indisponible';
+});
 </script>
 </body>
 </html>

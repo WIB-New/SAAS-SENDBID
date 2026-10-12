@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Storage Service Configuration
+StorageHub — Storage Service Configuration
 """
 import os
 from pathlib import Path
@@ -15,11 +15,11 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8080"
 
     # Database
-    database_url: str = "sqlite+aiosqlite:///./sendbid_storage.db"
+    database_url: str = "sqlite+aiosqlite:///./storagehub.db"
 
     # Auth
-    api_key: str = "dev-api-key-sendbid-2024"
-    hmac_secret: str = "dev-hmac-secret-sendbid-2024"
+    api_key: str = "dev-api-key"
+    hmac_secret: str = "dev-hmac-secret"
     hmac_timestamp_tolerance_seconds: int = 30
 
     # Storage

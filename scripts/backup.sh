@@ -1,6 +1,6 @@
 #!/bin/bash
 # ──────────────────────────────────────────────────────────────────────────────
-#  SAAS SENDBID — Backup script
+#  StorageHub — Backup script
 #  Uses restic to back up /var/app/uploads to a remote/secondary location.
 #  Schedule: daily via systemd timer or cron (0 2 * * *)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -9,9 +9,9 @@ set -euo pipefail
 
 # ── Configuration
 UPLOAD_DIR="${UPLOAD_DIR:-/var/app/uploads}"
-RESTIC_REPO="${RESTIC_REPO:-sftp:backup@192.168.1.100:/backups/sendbid-storage}"
-RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-/etc/sendbid/restic-password}"
-LOG_FILE="/var/log/sendbid/backup.log"
+RESTIC_REPO="${RESTIC_REPO:-sftp:backup@192.168.1.100:/backups/storagehub}"
+RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-/etc/storagehub/restic-password}"
+LOG_FILE="/var/log/storagehub/backup.log"
 SLACK_WEBHOOK="${SLACK_WEBHOOK:-}"  # Optional
 
 # Retention policy
@@ -34,12 +34,12 @@ notify() {
     if [ -n "$SLACK_WEBHOOK" ]; then
         curl -s -X POST "$SLACK_WEBHOOK" \
             -H 'Content-type: application/json' \
-            -d "{\"text\": \"[SENDBID Backup] $status: $message\"}" || true
+            -d "{\"text\": \"[STORAGEHUB Backup] $status: $message\"}" || true
     fi
 }
 
 # ── Backup
-log "=== Starting SENDBID backup ==="
+log "=== Starting STORAGEHUB backup ==="
 log "Source: $UPLOAD_DIR"
 log "Destination: $RESTIC_REPO"
 
@@ -60,7 +60,7 @@ fi
 # Run backup
 if restic backup \
     --verbose \
-    --tag "sendbid" \
+    --tag "storagehub" \
     --tag "$(date '+%Y-%m-%d')" \
     "$UPLOAD_DIR"; then
     notify "OK" "Backup completed successfully"
@@ -91,5 +91,5 @@ log "=== Backup complete ==="
 # Uncomment to use rsync instead of restic:
 # rsync -avz --delete \
 #     "$UPLOAD_DIR/" \
-#     "backup@192.168.1.100:/backups/sendbid-storage/" \
+#     "backup@192.168.1.100:/backups/storagehub/" \
 #     --exclude="*.tmp"

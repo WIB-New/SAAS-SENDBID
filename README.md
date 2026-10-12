@@ -1,4 +1,4 @@
-# StorageHub — SAAS SENDBID Storage Service
+# StorageHub — StorageHub Storage Service
 
 API de stockage de fichiers sécurisée, en mode **SaaS multi-tenant**. Chaque client
 crée un compte, génère ses propres identifiants API (`api_key` + `hmac_secret`) et
@@ -100,8 +100,7 @@ ui/
   index.html           Landing page (marketing, pricing)
   dashboard.html       Espace client (login, clés, usage, plans)
   docs.html            Documentation d'intégration multi-plateforme
-  console.html         Console de test d'intégration
-django_integration/    Client Python pour le backend SendBID
+django_integration/    Client Python pour le backend StorageHub
 nginx/                 Conf Nginx de référence (prod hors Dokploy)
 scripts/               backup (restic), monitoring disque, migration Emergent
 tests/                 pytest — uploads, sécurité, contrôle d'accès
@@ -127,7 +126,7 @@ pip install -r requirements.txt
 cp .env.example .env        # APP_ENV=development, SQLite par défaut
 uvicorn app.main:app --reload --port 8080
 # → http://localhost:8080          landing page
-# → http://localhost:8080/docs     Swagger
+# → http://localhost:8080/docs     Swagger UI (dev uniquement — désactivé en prod)
 # → http://localhost:8080/ui/dashboard.html
 pytest                      # tests
 ```
@@ -136,10 +135,10 @@ pytest                      # tests
 
 Service `compose` (source `git` → `main`, `composePath: ./docker-compose.yml`),
 domaine Traefik `storagehub.aiforge.world` → port 8080, HTTPS Let's Encrypt.
-PostgreSQL : service managé Dokploy `sendbid-storage-db` (volume persistant).
+PostgreSQL : service managé Dokploy `storagehub-db` (volume persistant).
 
 Env Dokploy : `DATABASE_URL`, `API_KEY`, `HMAC_SECRET`, `BASE_URL`, `CDN_BASE_URL`.
 
 ---
 
-© 2026 WIB Company — SendBID / PayBID
+© 2026 WIB Company — StorageHub

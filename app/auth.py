@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Authentication middleware
+StorageHub — Authentication middleware
 - Per-client API key + HMAC-SHA256 verification (service-to-service)
 - Master API key from env (internal/admin use)
 - JWT session auth for the client dashboard

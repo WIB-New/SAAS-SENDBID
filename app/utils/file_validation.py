@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — File validation utilities
+StorageHub — File validation utilities
 - Magic bytes MIME detection
 - Path traversal protection
 - Executable rejection

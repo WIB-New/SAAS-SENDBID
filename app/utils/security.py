@@ -1,5 +1,5 @@
 """
-SAAS SENDBID — Security utilities
+StorageHub — Security utilities
 - Password hashing (PBKDF2-HMAC-SHA256, stdlib)
 - JWT session tokens for the client dashboard
 - API credential generation
