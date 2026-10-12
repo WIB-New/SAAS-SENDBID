@@ -1,0 +1,109 @@
+"""
+SAAS SENDBID — Test configuration and fixtures
+"""
+import asyncio
+import io
+import os
+import struct
+import tempfile
+from pathlib import Path
+
+import pytest
+import pytest_asyncio
+from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+# Point to in-memory SQLite for tests
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["UPLOAD_ROOT"] = str(Path(tempfile.mkdtemp()) / "test_uploads")
+os.environ["API_KEY"] = "test-api-key"
+os.environ["HMAC_SECRET"] = "test-hmac-secret"
+os.environ["APP_ENV"] = "development"
+
+from app.main import app
+from app.database import Base, engine, AsyncSessionLocal, get_db
+
+TEST_API_KEY = "test-api-key"
+TEST_HEADERS = {
+    "X-API-Key": TEST_API_KEY,
+    "X-User-Id": "user-001",
+    "X-User-Role": "user",
+}
+ADMIN_HEADERS = {
+    "X-API-Key": TEST_API_KEY,
+    "X-User-Id": "admin-001",
+    "X-User-Role": "admin",
+}
+OTHER_USER_HEADERS = {
+    "X-API-Key": TEST_API_KEY,
+    "X-User-Id": "user-002",
+    "X-User-Role": "user",
+}
+
+
+def make_minimal_jpeg() -> bytes:
+    """Generate a minimal valid JPEG file (1x1 pixel)."""
+    return (
+        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t"
+        b"\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a"
+        b"\x1f\x1e\x1d\x1a\x1c\x1c $.' \",#\x1c\x1c(7),01444\x1f'9=82<.342\x1e"
+        b"\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00"
+        b"\xff\xc4\x00\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00"
+        b"\x00\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b"
+        b"\xff\xc4\x00\xb5\x10\x00\x02\x01\x03\x03\x02\x04\x03\x05\x05\x04\x04"
+        b"\x00\x00\x01}\x01\x02\x03\x00\x04\x11\x05\x12!1A\x06\x13Qa\x07"
+        b'"q\x14\xf0\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xf5\xf5\xf5\xff\xd9'
+    )
+
+
+def make_minimal_png() -> bytes:
+    """Generate a minimal valid PNG file (1x1 pixel)."""
+    import zlib
+    import struct
+
+    def png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+        c = chunk_type + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+    png_sig = b"\x89PNG\r\n\x1a\n"
+    ihdr_data = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)  # 1x1 RGB
+    ihdr = png_chunk(b"IHDR", ihdr_data)
+    raw_data = b"\x00\xff\x00\xff"  # filter byte + RGB pixel
+    idat = png_chunk(b"IDAT", zlib.compress(raw_data))
+    iend = png_chunk(b"IEND", b"")
+    return png_sig + ihdr + idat + iend
+
+
+def make_minimal_pdf() -> bytes:
+    """Generate a minimal valid PDF file."""
+    return (
+        b"%PDF-1.4\n"
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+        b"3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\n"
+        b"xref\n0 4\n0000000000 65535 f\n"
+        b"trailer<</Size 4/Root 1 0 R>>\n"
+        b"startxref\n9\n%%EOF"
+    )
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def client():
+    """Async test client with fresh DB per test."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)

@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAAS SENDBID — Integration Test Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:         #0b0d14;
+      --surface:    #141720;
+      --surface2:   #1b1f2e;
+      --surface3:   #222741;
+      --border:     #262d44;
+      --border2:    #323a5a;
+      --purple:     #7c6fff;
+      --purple-d:   #5c52cc;
+      --purple-g:   rgba(124,111,255,.14);
+      --teal:       #4ecdc4;
+      --teal-d:     #38b5ad;
+      --teal-g:     rgba(78,205,196,.12);
+      --green:      #3ddc97;
+      --green-g:    rgba(61,220,151,.11);
+      --red:        #f06068;
+      --red-g:      rgba(240,96,104,.11);
+      --orange:     #f9a825;
+      --orange-g:   rgba(249,168,37,.11);
+      --text:       #e8ecf7;
+      --text2:      #8b93b8;
+      --text3:      #525c82;
+      --nav-w:      230px;
+      --hdr-h:      64px;
+      --r:          12px;
+      --r-sm:       8px;
+      --ease:       .2s cubic-bezier(.4,0,.2,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--purple)}
+
+    /* HEADER */
+    header{position:fixed;top:0;left:0;right:0;z-index:200;height:var(--hdr-h);background:rgba(11,13,20,.9);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px}
+    .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--purple),var(--teal));display:grid;place-items:center;font-weight:900;font-size:15px;color:#fff;flex-shrink:0;box-shadow:0 0 24px var(--purple-g)}
+    .brand h1{font-size:15px;font-weight:700;background:linear-gradient(90deg,var(--purple),var(--teal));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .brand p{font-size:11px;color:var(--text3);font-weight:400}
+    .hdr-spacer{flex:1}
+    .hdr-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;transition:var(--ease);background:var(--green-g);color:var(--green);border:1px solid rgba(61,220,151,.2)}
+    .hdr-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+    .hdr-pill.off{background:var(--red-g);color:var(--red);border-color:rgba(240,96,104,.2)}
+    .hdr-pill.off .dot{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.75)}}
+    .hdr-link{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;font-size:12px;font-weight:500;color:var(--text2);border:1px solid var(--border);text-decoration:none;background:var(--surface);transition:var(--ease)}
+    .hdr-link:hover{color:var(--purple);border-color:var(--purple);background:var(--purple-g)}
+
+    /* LAYOUT */
+    .layout{display:flex;padding-top:var(--hdr-h);min-height:100vh}
+
+    /* NAV */
+    nav{position:fixed;top:var(--hdr-h);left:0;bottom:0;width:var(--nav-w);background:var(--surface);border-right:1px solid var(--border);padding:20px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+    .nav-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase;padding:14px 10px 6px}
+    .nav-label:first-child{padding-top:4px}
+    nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;transition:var(--ease);position:relative}
+    nav a .ni{width:30px;height:30px;background:var(--surface2);border-radius:7px;display:grid;place-items:center;font-size:14px;flex-shrink:0;transition:var(--ease)}
+    nav a:hover{color:var(--text);background:var(--surface2)}
+    nav a:hover .ni{background:var(--surface3)}
+    nav a.act{color:var(--purple);background:var(--purple-g)}
+    nav a.act .ni{background:rgba(124,111,255,.18)}
+    nav a.act::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:99px;background:linear-gradient(180deg,var(--purple),var(--teal))}
+
+    /* MAIN */
+    main{margin-left:var(--nav-w);flex:1;padding:28px 32px 60px;max-width:1080px}
+    .section{display:none}
+    .section.act{display:block;animation:fadeUp .22s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+    /* PAGE TITLE */
+    .ptitle{margin-bottom:24px}
+    .ptitle h2{font-size:22px;font-weight:800;background:linear-gradient(90deg,var(--text) 55%,var(--text2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .ptitle p{font-size:12.5px;color:var(--text3);margin-top:3px}
+
+    /* CARD */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;margin-bottom:18px;transition:border-color var(--ease)}
+    .card:hover{border-color:var(--border2)}
+    .card-hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+    .card-ico{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--purple-g),var(--teal-g));border:1px solid rgba(124,111,255,.18);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+    .card-hdr h3{font-size:14px;font-weight:700}
+    .card-hdr p{font-size:12px;color:var(--text3);margin-top:1px;font-weight:400}
+    .divider{border:none;border-top:1px solid var(--border);margin:18px 0}
+
+    /* FIELDS */
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px}
+    .field input,.field select{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);padding:9px 13px;font-size:13px;font-family:'Poppins',sans-serif;outline:none;transition:var(--ease);appearance:none}
+    .field input:focus,.field select:focus{border-color:var(--purple);background:var(--surface3);box-shadow:0 0 0 3px var(--purple-g)}
+    .field input::placeholder{color:var(--text3)}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;cursor:pointer;border:none;transition:var(--ease);white-space:nowrap}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-primary{background:linear-gradient(135deg,var(--purple),var(--purple-d));color:#fff;box-shadow:0 4px 14px rgba(124,111,255,.3)}
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 22px rgba(124,111,255,.45)}
+    .btn-teal{background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#fff;box-shadow:0 4px 14px rgba(78,205,196,.25)}
+    .btn-teal:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-danger{background:linear-gradient(135deg,var(--red),#c0392b);color:#fff}
+    .btn-danger:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border)}
+    .btn-ghost:hover:not(:disabled){background:var(--surface2);color:var(--text);border-color:var(--border2)}
+    .btn-sm{padding:6px 12px;font-size:12px}
+    .btn-xs{padding:4px 9px;font-size:11px}
+    .btns{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:16px}
+
+    /* UPLOAD ZONE */
+    .dropzone{border:2px dashed var(--border);border-radius:var(--r);padding:40px 32px;text-align:center;cursor:pointer;transition:var(--ease);background:var(--surface2);position:relative;overflow:hidden}
+    .dropzone::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,var(--purple-g),transparent 70%);opacity:0;transition:var(--ease)}
+    .dropzone:hover::before,.dropzone.over::before{opacity:1}
+    .dropzone:hover,.dropzone.over{border-color:var(--purple);background:rgba(124,111,255,.03)}
+    .dropzone .dz-ico{font-size:42px;margin-bottom:12px;filter:grayscale(1);transition:var(--ease)}
+    .dropzone:hover .dz-ico,.dropzone.over .dz-ico{filter:none}
+    .dropzone h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:5px}
+    .dropzone p{font-size:12px;color:var(--text3)}
+    .dropzone p strong{color:var(--purple);font-weight:600}
+    #fi{display:none}
+
+    /* FILE CHIP */
+    .fchip{display:flex;align-items:center;gap:12px;padding:11px 15px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);margin-top:12px}
+    .fchip-ico{width:36px;height:36px;border-radius:8px;background:var(--purple-g);border:1px solid rgba(124,111,255,.18);display:grid;place-items:center;font-size:17px;flex-shrink:0}
+    .fchip-info{flex:1;min-width:0}
+    .fchip-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fchip-size{font-size:11px;color:var(--text3)}
+
+    /* CAT PILLS */
+    .cat-pills{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+    .cpill{display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:99px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid var(--border);color:var(--text2);background:var(--surface2);transition:var(--ease);user-select:none}
+    .cpill .dot{width:7px;height:7px;border-radius:50%;background:var(--text3);transition:var(--ease)}
+    .cpill:hover{border-color:var(--border2);color:var(--text)}
+    .cpill[data-c="avatars"].on{background:var(--purple-g);border-color:var(--purple);color:var(--purple)}
+    .cpill[data-c="avatars"].on .dot{background:var(--purple);box-shadow:0 0 6px var(--purple)}
+    .cpill[data-c="kyc"].on{background:var(--orange-g);border-color:var(--orange);color:var(--orange)}
+    .cpill[data-c="kyc"].on .dot{background:var(--orange);box-shadow:0 0 6px var(--orange)}
+    .cpill[data-c="receipts"].on{background:var(--teal-g);border-color:var(--teal);color:var(--teal)}
+    .cpill[data-c="receipts"].on .dot{background:var(--teal);box-shadow:0 0 6px var(--teal)}
+
+    /* PROGRESS */
+    .prog-wrap{background:var(--surface2);border-radius:99px;height:4px;overflow:hidden;margin-top:12px}
+    .prog-bar{height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--teal));border-radius:99px;transition:width .3s ease;box-shadow:0 0 10px rgba(124,111,255,.4)}
+
+    /* RESPONSE */
+    .resp{margin-top:14px;background:#070a10;border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;font-family:'Courier New',monospace;font-size:11.5px;line-height:1.7;max-height:260px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;color:var(--text2);position:relative}
+    .resp::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-sm) var(--r-sm) 0 0}
+    .resp.ok::before{background:linear-gradient(90deg,var(--green),var(--teal))}
+    .resp.err::before{background:linear-gradient(90deg,var(--red),var(--orange))}
+    .resp.info::before{background:linear-gradient(90deg,var(--purple),var(--teal))}
+
+    /* ALERT */
+    .alert{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border-radius:var(--r-sm);font-size:12.5px;line-height:1.6;margin-bottom:14px}
+    .alert .ai{font-size:15px;flex-shrink:0;margin-top:1px}
+    .alert-info{background:rgba(124,111,255,.07);border:1px solid rgba(124,111,255,.18);color:#a89fff}
+    .alert-warn{background:var(--orange-g);border:1px solid rgba(249,168,37,.22);color:#ffc554}
+    .alert-ok{background:var(--green-g);border:1px solid rgba(61,220,151,.22);color:#60e6a8}
+    .alert-err{background:var(--red-g);border:1px solid rgba(240,96,104,.22);color:#f8898f}
+
+    /* TABLE */
+    .tbl-wrap{border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead tr{background:var(--surface2);border-bottom:1px solid var(--border)}
+    th{padding:10px 13px;text-align:left;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;white-space:nowrap}
+    td{padding:11px 13px;font-size:12.5px;color:var(--text2);border-bottom:1px solid rgba(38,45,68,.5);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:rgba(124,111,255,.03);color:var(--text)}
+
+    /* BADGES */
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:10.5px;font-weight:700}
+    .badge::before{content:'●';font-size:7px}
+    .badge-avatars{background:var(--purple-g);color:var(--purple)}
+    .badge-kyc{background:var(--orange-g);color:var(--orange)}
+    .badge-receipts{background:var(--teal-g);color:var(--teal)}
+    .id-chip{font-family:'Courier New',monospace;font-size:11px;color:var(--text2);background:var(--surface3);padding:2px 7px;border-radius:4px}
+    .copy-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;border-radius:4px;transition:var(--ease);font-size:12px}
+    .copy-btn:hover{color:var(--purple);background:var(--purple-g)}
+    .act-row{display:flex;gap:5px}
+
+    /* HEALTH GRID */
+    .hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:13px;margin-bottom:18px}
+    .hcard{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;transition:var(--ease)}
+    .hcard:hover{border-color:var(--border2);transform:translateY(-2px)}
+    .hcard .hl{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px}
+    .hcard .hv{font-size:24px;font-weight:800;line-height:1}
+    .hcard .hs{font-size:11px;color:var(--text3);margin-top:4px}
+    .hcard .hbar-w{background:var(--border);border-radius:99px;height:4px;margin-top:9px;overflow:hidden}
+    .hcard .hbar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--purple),var(--teal));transition:width .6s ease}
+
+    /* ══ INTEGRATION TESTS ══ */
+    .test-runner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+    .test-summary{display:flex;gap:10px}
+    .ts-pill{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;font-size:12.5px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2)}
+    .ts-pill.pass{color:var(--green);border-color:rgba(61,220,151,.3);background:var(--green-g)}
+    .ts-pill.fail{color:var(--red);border-color:rgba(240,96,104,.3);background:var(--red-g)}
+    .ts-pill.skip{color:var(--text3);border-color:var(--border)}
+
+    /* Bloc de tests */
+    .test-bloc{margin-bottom:22px}
+    .test-bloc-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;padding:10px 0 10px;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+    .test-bloc-title .bloc-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--surface2);border:1px solid var(--border);color:var(--text3)}
+    .test-bloc-title .bloc-arrow{font-size:11px;margin-left:auto;transition:var(--ease)}
+    .test-bloc-title.collapsed .bloc-arrow{transform:rotate(-90deg)}
+    .test-items{display:flex;flex-direction:column;gap:7px}
+
+    /* Item de test */
+    .ti{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);transition:var(--ease)}
+    .ti:hover{border-color:var(--border2)}
+    .ti-status{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex-shrink:0;background:var(--surface3);margin-top:1px;transition:var(--ease)}
+    .ti.pending .ti-status{background:var(--surface3);color:var(--text3)}
+    .ti.running .ti-status{background:rgba(124,111,255,.15);animation:spin .6s linear infinite}
+    .ti.pass .ti-status{background:var(--green-g);color:var(--green)}
+    .ti.fail .ti-status{background:var(--red-g);color:var(--red)}
+    .ti.skip .ti-status{background:var(--surface3);color:var(--text3);opacity:.5}
+    .ti-body{flex:1;min-width:0}
+    .ti-name{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .ti-name .method{font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+    .ti-name .endpoint{font-family:'Courier New',monospace;font-size:11px;color:var(--text3);font-weight:400}
+    .ti-desc{font-size:11.5px;color:var(--text3);margin-top:2px}
+    .ti-result{font-size:11.5px;margin-top:5px;font-weight:500}
+    .ti.pass .ti-result{color:var(--green)}
+    .ti.fail .ti-result{color:var(--red)}
+    .ti.running .ti-result{color:var(--purple);animation:blink 1s infinite}
+    @keyframes blink{50%{opacity:.4}}
+    .ti-expected{font-size:11px;color:var(--text3);margin-top:3px;font-family:'Courier New',monospace}
+    .method-get{background:var(--green-g);color:var(--green)}
+    .method-post{background:var(--orange-g);color:var(--orange)}
+    .method-delete{background:var(--red-g);color:var(--red)}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Progress bar grande */
+    .run-progress{background:var(--surface2);border-radius:99px;height:6px;overflow:hidden;margin:12px 0}
+    .run-progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--teal));border-radius:99px;transition:width .4s ease;box-shadow:0 0 12px rgba(124,111,255,.35)}
+
+    /* Toast */
+    #toasts{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:9px}
+    .toast{display:flex;align-items:center;gap:11px;padding:13px 17px;border-radius:var(--r-sm);background:var(--surface2);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);font-size:13px;font-weight:500;max-width:320px;animation:slideIn .25s ease}
+    .toast.ok{border-left:3px solid var(--green)}
+    .toast.err{border-left:3px solid var(--red)}
+    .toast.inf{border-left:3px solid var(--purple)}
+    @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+
+    /* Health arch */
+    .arch{background:#070a10;border:1px solid var(--border);border-radius:var(--r-sm);padding:18px 20px;font-family:'Courier New',monospace;font-size:11.5px;line-height:1.9;color:var(--text2);overflow-x:auto}
+    .arch .p{color:var(--purple);font-weight:700}
+    .arch .t{color:var(--teal);font-weight:700}
+    .arch .g{color:var(--green);font-weight:700}
+    .arch .r{color:var(--red);font-weight:700}
+    .arch .o{color:var(--orange);font-weight:700}
+
+    /* signed URL box */
+    .signed-url-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-family:'Courier New',monospace;font-size:11.5px;color:var(--teal);word-break:break-all;margin-top:12px;display:none}
+
+    .mt1{margin-top:6px}.mt2{margin-top:12px}.mt3{margin-top:20px}
+    .muted{color:var(--text3)}.sm{font-size:12px}.fw6{font-weight:600}
+    .flex{display:flex;align-items:center}.gap2{gap:8px}
+  </style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<header>
+  <div class="logo">SB</div>
+  <div class="brand">
+    <h1>SAAS SENDBID</h1>
+    <p>Storage Service — API Integration Suite</p>
+  </div>
+  <div class="hdr-spacer"></div>
+  <div id="spill" class="hdr-pill" onclick="checkHealth()">
+    <div class="dot"></div>
+    <span id="slbl">Vérification…</span>
+  </div>
+  <a href="/docs" target="_blank" class="hdr-link">📖 Swagger</a>
+  <a href="/redoc" target="_blank" class="hdr-link">📋 ReDoc</a>
+</header>
+
+<div class="layout">
+  <nav>
+    <div class="nav-label">Fichiers</div>
+    <a href="#" class="act" onclick="show('upload',this)"><span class="ni">📤</span>Upload</a>
+    <a href="#" onclick="show('files',this)"><span class="ni">📁</span>Mes fichiers</a>
+
+    <div class="nav-label">Tests</div>
+    <a href="#" onclick="show('integration',this)"><span class="ni">🧪</span>Intégration</a>
+    <a href="#" onclick="show('access',this)"><span class="ni">🔐</span>Contrôle accès</a>
+    <a href="#" onclick="show('signed',this)"><span class="ni">🔗</span>URLs signées</a>
+
+    <div class="nav-label">Système</div>
+    <a href="#" onclick="show('health',this)"><span class="ni">📊</span>Santé</a>
+    <a href="#" onclick="show('config',this)"><span class="ni">⚙️</span>Configuration</a>
+  </nav>
+
+  <main>
+
+    <!-- ═══════ UPLOAD ═══════ -->
+    <div class="section act" id="s-upload">
+      <div class="ptitle"><h2>Upload de fichier</h2><p>Testez l'envoi de fichiers vers le service de stockage</p></div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico">📤</div><div><h3>Nouveau fichier</h3><p>Validation magic bytes, EXIF strip, UUID côté serveur</p></div></div>
+
+        <div class="field mt2"><label>Catégorie</label>
+          <div class="cat-pills">
+            <div class="cpill on" data-c="avatars" onclick="setCat('avatars',this)"><div class="dot"></div>Avatar</div>
+            <div class="cpill" data-c="kyc" onclick="setCat('kyc',this)"><div class="dot"></div>KYC / CNI</div>
+            <div class="cpill" data-c="receipts" onclick="setCat('receipts',this)"><div class="dot"></div>Reçu</div>
+          </div>
+        </div>
+        <div class="field mt2"><label>User ID (propriétaire)</label><input id="upUid" type="text" value="user-001" /></div>
+
+        <div class="dropzone mt2" id="dz" onclick="document.getElementById('fi').click()"
+          ondragover="event.preventDefault();this.classList.add('over')"
+          ondragleave="this.classList.remove('over')"
+          ondrop="onDrop(event)">
+          <div class="dz-ico">🗂️</div>
+          <h4>Glissez votre fichier ici</h4>
+          <p id="dzHint">Avatar : <strong>JPEG / PNG / WebP</strong> — max 5 MB</p>
+          <p class="mt1 muted sm">ou cliquez pour sélectionner</p>
+        </div>
+        <input type="file" id="fi" onchange="onFilePick()" />
+
+        <div id="fchip" style="display:none" class="fchip">
+          <div id="fchipIco" class="fchip-ico">🖼️</div>
+          <div class="fchip-info"><div id="fchipName" class="fchip-name"></div><div id="fchipSize" class="fchip-size"></div></div>
+          <button class="btn btn-ghost btn-sm" onclick="clearFile()">✕</button>
+        </div>
+        <div id="pWrap" style="display:none"><div class="prog-wrap"><div id="pBar" class="prog-bar"></div></div></div>
+
+        <div class="btns">
+          <button class="btn btn-primary" id="upBtn" onclick="doUpload()" disabled>📤 Envoyer</button>
+          <button class="btn btn-ghost" onclick="genFile()">🔧 Générer fichier test</button>
+        </div>
+        <div id="upResp" class="resp" style="display:none"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico" style="background:var(--red-g);border-color:rgba(240,96,104,.18)">🧪</div><div><h3>Tests de rejet</h3><p>Fichiers dangereux ou invalides — doivent être bloqués</p></div></div>
+        <div class="alert alert-warn"><span class="ai">⚠️</span><span>Un statut <strong>400 ou 413</strong> = protection active. Un statut <strong>201</strong> sur ces tests = faille de sécurité.</span></div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="badUpload('exe')">⚠️ Exécutable MZ</button>
+          <button class="btn btn-ghost btn-sm" onclick="badUpload('elf')">🐧 ELF Linux</button>
+          <button class="btn btn-ghost btn-sm" onclick="badUpload('sh')">🐛 Script shell</button>
+          <button class="btn btn-ghost btn-sm" onclick="badUpload('empty')">🚫 Fichier vide</button>
+          <button class="btn btn-ghost btn-sm" onclick="badUpload('big')">💥 > 5 MB</button>
+          <button class="btn btn-ghost btn-sm" onclick="badUpload('badcat')">🔀 Catégorie invalide</button>
+        </div>
+        <div id="badResp" class="resp" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ FILES ═══════ -->
+    <div class="section" id="s-files">
+      <div class="ptitle"><h2>Mes fichiers</h2><p>Lister, inspecter et supprimer des fichiers stockés</p></div>
+      <div class="card">
+        <div class="g3">
+          <div class="field"><label>User ID</label><input id="lUid" value="user-001" /></div>
+          <div class="field"><label>Rôle</label><select id="lRole"><option value="user">user</option><option value="admin">admin</option><option value="kyc_agent">kyc_agent</option></select></div>
+          <div class="field"><label>Catégorie</label><select id="lCat"><option value="">Toutes</option><option>avatars</option><option>kyc</option><option>receipts</option></select></div>
+        </div>
+        <div class="btns"><button class="btn btn-primary" onclick="loadFiles()">🔄 Charger</button></div>
+        <hr class="divider" />
+        <div id="filesOut"><p class="muted sm" style="text-align:center;padding:20px 0">Cliquez sur "Charger" pour afficher les fichiers.</p></div>
+      </div>
+    </div>
+
+    <!-- ═══════ INTEGRATION TESTS ═══════ -->
+    <div class="section" id="s-integration">
+      <div class="ptitle">
+        <h2>Suite de tests d'intégration</h2>
+        <p>107 cas de test organisés en 11 blocs — vérification complète avant mise en production</p>
+      </div>
+
+      <div class="card">
+        <div class="test-runner-header">
+          <div>
+            <div class="flex gap2">
+              <button class="btn btn-primary" id="runAllBtn" onclick="runAllTests()">🚀 Lancer tous les tests</button>
+              <button class="btn btn-ghost" onclick="resetTests()">↺ Réinitialiser</button>
+            </div>
+          </div>
+          <div class="test-summary" id="testSummary" style="display:none">
+            <div class="ts-pill pass" id="tsPass">✅ 0 passés</div>
+            <div class="ts-pill fail" id="tsFail">❌ 0 échoués</div>
+            <div class="ts-pill skip" id="tsSkip">⏭ 0 ignorés</div>
+          </div>
+        </div>
+        <div class="run-progress"><div id="runPbar" class="run-progress-bar"></div></div>
+        <div id="testBlocs"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ ACCESS ═══════ -->
+    <div class="section" id="s-access">
+      <div class="ptitle"><h2>Contrôle d'accès</h2><p>Qui peut accéder à quoi selon son identité et son rôle</p></div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico">🔐</div><div><h3>Simuler une tentative d'accès</h3><p>Propriétaire, autre user, admin, sans auth…</p></div></div>
+        <div class="alert alert-info"><span class="ai">ℹ️</span><span>Obtenez un File ID depuis "Mes fichiers" (bouton 🔍) puis testez ici.</span></div>
+        <div class="g2">
+          <div class="field"><label>File ID cible</label><input id="acId" placeholder="uuid…" /></div>
+          <div class="field"><label>User ID demandeur</label><input id="acUid" value="user-002" /></div>
+          <div class="field"><label>Rôle</label><select id="acRole"><option value="user">user</option><option value="admin">admin</option><option value="kyc_agent">kyc_agent</option></select></div>
+          <div class="field"><label>Action</label><select id="acAct"><option value="meta">Métadonnées</option><option value="stream">Télécharger</option><option value="delete">Supprimer</option></select></div>
+        </div>
+        <div class="btns">
+          <button class="btn btn-primary" onclick="testAccess()">🔍 Tester l'accès</button>
+          <button class="btn btn-ghost" onclick="testNoAuth()">🔒 Sans auth (→ 401)</button>
+        </div>
+        <div id="acResp" class="resp" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ SIGNED ═══════ -->
+    <div class="section" id="s-signed">
+      <div class="ptitle"><h2>URLs signées</h2><p>Accès temporaire HMAC-SHA256 sans exposer vos credentials</p></div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico">🔗</div><div><h3>Générer une URL signée</h3><p>TTL configurable, utilisable sans X-API-Key</p></div></div>
+        <div class="g3">
+          <div class="field"><label>File ID</label><input id="sgId" placeholder="uuid…" /></div>
+          <div class="field"><label>User ID</label><input id="sgUid" value="user-001" /></div>
+          <div class="field"><label>TTL (secondes)</label><input type="number" id="sgTtl" value="60" min="5" max="3600" /></div>
+        </div>
+        <div class="btns"><button class="btn btn-primary" onclick="getSignedUrl()">🔗 Générer</button></div>
+        <div id="sgGenResp" class="resp" style="display:none"></div>
+        <div id="sgBox" class="signed-url-box"></div>
+        <hr class="divider" />
+        <div class="card-hdr" style="margin-bottom:12px"><div class="card-ico" style="background:var(--teal-g);border-color:rgba(78,205,196,.18)">▶️</div><div><h3>Tester l'URL</h3><p>Valide ou falsifiée</p></div></div>
+        <div class="field"><label>URL signée</label><input id="sgUrl" placeholder="http://…/download?expires=…&sig=…" /></div>
+        <div class="btns">
+          <button class="btn btn-teal" onclick="testSigned()">▶️ Accéder</button>
+          <button class="btn btn-ghost" onclick="testTampered()">👾 URL falsifiée</button>
+        </div>
+        <div id="sgTestResp" class="resp" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ HEALTH ═══════ -->
+    <div class="section" id="s-health">
+      <div class="ptitle"><h2>Santé & métriques</h2><p>État en temps réel — DB, disque, uptime</p></div>
+      <div class="btns" style="margin-top:0;margin-bottom:20px"><button class="btn btn-primary" onclick="loadHealth()">🔄 Rafraîchir</button></div>
+      <div id="healthOut"><p class="muted sm" style="text-align:center;padding:30px 0">Chargement…</p></div>
+    </div>
+
+    <!-- ═══════ CONFIG ═══════ -->
+    <div class="section" id="s-config">
+      <div class="ptitle"><h2>Configuration</h2><p>Paramètres de connexion — persistés localStorage</p></div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico">⚙️</div><div><h3>Paramètres API</h3></div></div>
+        <div class="g2">
+          <div class="field"><label>Base URL</label><input id="cfUrl" value="http://localhost:8080" /></div>
+          <div class="field"><label>API Key</label><input id="cfKey" value="dev-api-key-sendbid-2024" /></div>
+          <div class="field"><label>User ID par défaut</label><input id="cfUid" value="user-001" /></div>
+          <div class="field"><label>Rôle par défaut</label><select id="cfRole"><option value="user">user</option><option value="admin">admin</option><option value="kyc_agent">kyc_agent</option></select></div>
+        </div>
+        <div class="btns">
+          <button class="btn btn-primary" onclick="saveCfg()">💾 Sauvegarder</button>
+          <button class="btn btn-teal" onclick="checkHealth()">🔗 Tester</button>
+        </div>
+        <div id="cfMsg" class="alert alert-ok mt2" style="display:none"><span class="ai">✅</span>Configuration sauvegardée.</div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico">🏗️</div><div><h3>Architecture</h3></div></div>
+        <div class="arch">
+<span class="p">┌─────────────────────────────────────────────────────────┐
+│           SAAS SENDBID — Storage Service                │
+│  Django REST ─►  FastAPI :8080  ◄─  React Native       │
+└───────────────────────────┬─────────────────────────────┘</span>
+                            │ HTTPS · X-API-Key · HMAC · X-User-Id
+<span class="p">              ┌─────────────▼─────────────┐</span>
+              │     POST /v1/files        │  Upload + validation
+              │     GET  /v1/files/{id}   │  Stream (auth)
+              │     GET  .../signed       │  URL HMAC TTL
+              │     DELETE /v1/files/{id} │  Soft delete
+<span class="p">              └──────────┬──────────────┘</span>
+                         │
+          <span class="o">┌──────────────┴──────────────────────┐</span>
+<span class="g">┌────────────▼────────┐</span>       <span class="t">┌────────────────────────────────────┐</span>
+<span class="g">│  PostgreSQL         │</span>       <span class="t">│  /uploads/avatars/  ─► Nginx  ✅   │</span>
+<span class="g">│  stored_files       │</span>       <span class="r">│  /uploads/kyc/      ─► BLOQUÉ 🔒   │</span>
+<span class="g">│  audit_logs         │</span>       <span class="r">│  /uploads/receipts/ ─► BLOQUÉ 🔒   │</span>
+<span class="g">└─────────────────────┘</span>       <span class="t">└────────────────────────────────────┘</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════
+let C = { url:'http://localhost:8080', key:'dev-api-key-sendbid-2024', uid:'user-001', role:'user' };
+let selCat = 'avatars', selFile = null;
+const HINTS = {
+  avatars:  'Avatar : <strong>JPEG / PNG / WebP</strong> — max 5 MB — URL publique CDN',
+  kyc:      'KYC / CNI : <strong>JPEG / PNG / PDF</strong> — max 10 MB — <strong style="color:var(--red)">Aucune URL publique</strong>',
+  receipts: 'Reçu : <strong>JPEG / PNG / PDF</strong> — max 10 MB — <strong style="color:var(--red)">Aucune URL publique</strong>',
+};
+function h(uid, role){ return {'X-API-Key':C.key,'X-User-Id':uid||C.uid,'X-User-Role':role||C.role} }
+
+window.onload = () => { loadCfg(); checkHealth(); };
+
+function loadCfg(){
+  const s = JSON.parse(localStorage.getItem('sb2') || '{}');
+  Object.assign(C,s);
+  ['url','key','uid'].forEach(k => document.getElementById('cf'+k[0].toUpperCase()+k.slice(1)) && (document.getElementById('cf'+k[0].toUpperCase()+k.slice(1)).value=C[k]));
+  if(document.getElementById('cfUrl')) document.getElementById('cfUrl').value = C.url;
+  if(document.getElementById('cfKey')) document.getElementById('cfKey').value = C.key;
+  if(document.getElementById('cfUid')) document.getElementById('cfUid').value = C.uid;
+  if(document.getElementById('cfRole')) document.getElementById('cfRole').value = C.role;
+}
+function saveCfg(){
+  C.url  = document.getElementById('cfUrl').value.trim();
+  C.key  = document.getElementById('cfKey').value.trim();
+  C.uid  = document.getElementById('cfUid').value.trim();
+  C.role = document.getElementById('cfRole').value;
+  localStorage.setItem('sb2', JSON.stringify(C));
+  const m = document.getElementById('cfMsg');
+  m.style.display='flex'; setTimeout(()=>m.style.display='none', 2500);
+  toast('Configuration sauvegardée','ok');
+  checkHealth();
+}
+
+// ══════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════
+function show(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('act'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('act'));
+  document.getElementById('s-'+id).classList.add('act');
+  el.classList.add('act');
+  if(id==='health') loadHealth();
+  if(id==='files')  loadFiles();
+  if(id==='integration') initTestBlocs();
+}
+
+// ══════════════════════════════════════════
+//  UPLOAD
+// ══════════════════════════════════════════
+function setCat(c, el){
+  selCat=c;
+  document.querySelectorAll('.cpill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('dzHint').innerHTML = HINTS[c];
+}
+function onFilePick(){ const f=document.getElementById('fi').files[0]; if(f){selFile=f;showChip(f);} }
+function onDrop(e){ e.preventDefault(); document.getElementById('dz').classList.remove('over'); const f=e.dataTransfer.files[0]; if(f){selFile=f;showChip(f);} }
+function showChip(f){
+  const m={'image/jpeg':'🖼️','image/png':'🖼️','image/webp':'🖼️','application/pdf':'📄'};
+  document.getElementById('fchipIco').textContent=m[f.type]||'📎';
+  document.getElementById('fchipName').textContent=f.name;
+  document.getElementById('fchipSize').textContent=`${(f.size/1024).toFixed(1)} KB — ${f.type||'?'}`;
+  document.getElementById('fchip').style.display='flex';
+  document.getElementById('upBtn').disabled=false;
+}
+function clearFile(){ selFile=null; document.getElementById('fi').value=''; document.getElementById('fchip').style.display='none'; document.getElementById('upBtn').disabled=true; }
+
+async function doUpload(){
+  if(!selFile) return;
+  const btn=document.getElementById('upBtn');
+  btn.disabled=true; btn.innerHTML='<span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .6s linear infinite"></span> Envoi…';
+  const pw=document.getElementById('pWrap'), pb=document.getElementById('pBar');
+  pw.style.display='block'; let p=0;
+  const iv=setInterval(()=>{p=Math.min(p+7,88);pb.style.width=p+'%'},130);
+  const uid=document.getElementById('upUid').value||C.uid;
+  const fd=new FormData(); fd.append('file',selFile); fd.append('category',selCat); fd.append('owner_user_id',uid);
+  try{
+    const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h(uid),body:fd});
+    clearInterval(iv); pb.style.width='100%';
+    const d=await r.json();
+    showR('upResp',r.status,d);
+    toast(r.ok?`Fichier uploadé — ${d.file_id?.substring(0,8)}…`:`Erreur ${r.status}`,r.ok?'ok':'err');
+  }catch(e){ clearInterval(iv); showR('upResp',0,{error:e.message},'err'); toast('Connexion impossible','err'); }
+  finally{ setTimeout(()=>{pw.style.display='none';pb.style.width='0'},900); btn.disabled=false; btn.innerHTML='📤 Envoyer'; }
+}
+
+async function genFile(){
+  const c=document.createElement('canvas'); c.width=120; c.height=120;
+  const ctx=c.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,120,120);
+  g.addColorStop(0,`hsl(${Math.random()*360},70%,55%)`); g.addColorStop(1,`hsl(${Math.random()*360},65%,40%)`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,120,120);
+  ctx.fillStyle='rgba(255,255,255,.9)'; ctx.font='bold 13px Poppins,sans-serif'; ctx.textAlign='center'; ctx.fillText('SENDBID',60,65);
+  c.toBlob(b=>{ selFile=new File([b],`test-${selCat}.jpg`,{type:'image/jpeg'}); showChip(selFile); },'image/jpeg',.9);
+  toast('Fichier test généré','inf');
+}
+
+async function badUpload(type){
+  let file, cat='avatars', label;
+  if(type==='exe'){ file=new File([new Uint8Array([0x4D,0x5A,...Array(120).fill(0)])],'virus.exe',{type:'application/octet-stream'}); label='Exécutable Windows MZ'; }
+  else if(type==='elf'){ file=new File([new Uint8Array([0x7F,0x45,0x4C,0x46,...Array(60).fill(0)])],'hack.elf',{type:'application/octet-stream'}); label='Exécutable Linux ELF'; }
+  else if(type==='sh'){ file=new File([new TextEncoder().encode('#!/bin/bash\nrm -rf /\n')],'hack.sh',{type:'text/plain'}); label='Script shell'; }
+  else if(type==='empty'){ file=new File([],'empty.jpg',{type:'image/jpeg'}); label='Fichier vide'; }
+  else if(type==='big'){ file=new File([new Uint8Array(6*1024*1024).fill(66)],'big.jpg',{type:'image/jpeg'}); label='Fichier > 5 MB'; }
+  else if(type==='badcat'){ cat='../../etc/passwd'; file=new File([new Uint8Array([0xFF,0xD8,0xFF,0xE0])],'x.jpg',{type:'image/jpeg'}); label='Catégorie path traversal'; }
+  const fd=new FormData(); fd.append('file',file); fd.append('category',cat); fd.append('owner_user_id',C.uid);
+  try{
+    const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h(C.uid),body:fd});
+    const d=await r.json();
+    const good=[400,413,422].includes(r.status);
+    showR('badResp',r.status,{test:label,status:r.status,résultat:good?`✅ REJETÉ (${r.status}) — protection active`:`❌ ACCEPTÉ (${r.status}) — vérifier !`,detail:d},good?'ok':'err');
+    toast(good?`Rejeté ${r.status}`:`Accepté ! ${r.status}`,good?'ok':'err');
+  }catch(e){ showR('badResp',0,{error:e.message},'err'); }
+}
+
+// ══════════════════════════════════════════
+//  FILES LIST
+// ══════════════════════════════════════════
+async function loadFiles(){
+  const uid=document.getElementById('lUid').value||C.uid;
+  const role=document.getElementById('lRole').value;
+  const cat=document.getElementById('lCat').value;
+  const q=cat?`?category=${cat}`:'';
+  try{
+    const r=await fetch(`${C.url}/v1/files${q}`,{headers:h(uid,role)});
+    const files=await r.json();
+    if(!r.ok){ document.getElementById('filesOut').innerHTML=`<div class="alert alert-err"><span class="ai">❌</span>${files.detail||JSON.stringify(files)}</div>`; return; }
+    if(!files.length){ document.getElementById('filesOut').innerHTML='<p class="muted sm" style="padding:20px 0;text-align:center">Aucun fichier trouvé.</p>'; return; }
+    let rows='';
+    for(const f of files){
+      const id=f.file_id;
+      rows+=`<tr>
+        <td><span class="id-chip" title="${id}">${id.substring(0,8)}…</span><button class="copy-btn" onclick="cp('${id}')">⧉</button></td>
+        <td><span class="badge badge-${f.category}">${f.category}</span></td>
+        <td style="font-family:'Courier New',monospace;font-size:11px">${f.mime_type}</td>
+        <td>${(f.size_bytes/1024).toFixed(1)} KB</td>
+        <td style="font-size:12px">${f.owner_user_id}</td>
+        <td style="font-size:11px;color:var(--text3)">${new Date(f.created_at).toLocaleDateString('fr')}</td>
+        <td><div class="act-row">
+          <button class="btn btn-ghost btn-xs" title="Utiliser cet ID" onclick="fillId('${id}')">🔍</button>
+          <button class="btn btn-danger btn-xs" onclick="delFile('${id}','${uid}','${role}')">🗑️</button>
+        </div></td>
+      </tr>`;
+    }
+    document.getElementById('filesOut').innerHTML=`
+      <p class="muted sm" style="margin-bottom:10px">${files.length} fichier(s)</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>File ID</th><th>Catégorie</th><th>MIME</th><th>Taille</th><th>Propriétaire</th><th>Créé</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }catch(e){ document.getElementById('filesOut').innerHTML=`<div class="alert alert-err"><span class="ai">❌</span>${e.message}</div>`; }
+}
+
+async function delFile(id, uid, role){
+  if(!confirm(`Supprimer ${id.substring(0,8)}… ?`)) return;
+  const r=await fetch(`${C.url}/v1/files/${id}`,{method:'DELETE',headers:h(uid,role)});
+  const d=await r.json();
+  toast(r.ok?'Fichier supprimé':`Erreur: ${d.detail}`,r.ok?'ok':'err');
+  if(r.ok) loadFiles();
+}
+function fillId(id){
+  document.getElementById('acId').value=id;
+  document.getElementById('sgId').value=id;
+  toast('File ID copié dans Contrôle accès & URLs signées','inf');
+}
+
+// ══════════════════════════════════════════
+//  ACCESS CONTROL
+// ══════════════════════════════════════════
+async function testAccess(){
+  const id=document.getElementById('acId').value, uid=document.getElementById('acUid').value, role=document.getElementById('acRole').value, act=document.getElementById('acAct').value;
+  if(!id){ toast('Entrez un File ID','err'); return; }
+  const url=`${C.url}/v1/files/${id}${act==='meta'?'/meta':''}`;
+  const method=act==='delete'?'DELETE':'GET';
+  const r=await fetch(url,{method,headers:h(uid,role)}).catch(e=>({ok:false,status:0,json:async()=>({error:e.message})}));
+  let d; try{d=await r.json();}catch{d={status:r.status,content_type:r.headers?.get('content-type')};}
+  showR('acResp',r.status,d);
+  toast(`${r.status} ${r.ok?'✅':'❌'}`,r.ok?'ok':'err');
+}
+async function testNoAuth(){
+  const id=document.getElementById('acId').value; if(!id){toast('Entrez un File ID','err');return;}
+  const r=await fetch(`${C.url}/v1/files/${id}`).catch(e=>({ok:false,status:0,json:async()=>({error:e.message})}));
+  const d=await r.json().catch(()=>({}));
+  showR('acResp',r.status,{test:'Sans authentification — attendu 401',...d});
+  toast(r.status===401?'401 — auth requise ✅':`Status ${r.status} — attendu 401`,r.status===401?'ok':'err');
+}
+
+// ══════════════════════════════════════════
+//  SIGNED URLS
+// ══════════════════════════════════════════
+async function getSignedUrl(){
+  const id=document.getElementById('sgId').value, uid=document.getElementById('sgUid').value, ttl=document.getElementById('sgTtl').value;
+  if(!id){toast('Entrez un File ID','err');return;}
+  const r=await fetch(`${C.url}/v1/files/${id}/signed?ttl=${ttl}`,{headers:h(uid)});
+  const d=await r.json();
+  showR('sgGenResp',r.status,d);
+  if(r.ok&&d.signed_url){
+    document.getElementById('sgUrl').value=d.signed_url;
+    const b=document.getElementById('sgBox'); b.style.display='block'; b.textContent=d.signed_url;
+    toast('URL signée générée','ok');
+  }
+}
+async function testSigned(){
+  const url=document.getElementById('sgUrl').value; if(!url){toast('Entrez une URL signée','err');return;}
+  const r=await fetch(url).catch(e=>({ok:false,status:0,headers:new Headers()}));
+  showR('sgTestResp',r.status,{status:r.status,ok:r.ok,résultat:r.ok?'✅ Accès autorisé':'❌ Accès refusé'},r.ok?'ok':'err');
+  toast(r.ok?'Accès accordé ✅':'Accès refusé ❌',r.ok?'ok':'err');
+}
+async function testTampered(){
+  const url=document.getElementById('sgUrl').value; if(!url){toast('Générez d\'abord une URL','err');return;}
+  const t=url.replace(/sig=[^&]+/,'sig=FAKE_TAMPERED_999999999');
+  const r=await fetch(t).catch(e=>({status:0}));
+  const d=await r.json?.()?.catch?.(()=>({})) || {};
+  const ok=r.status===403;
+  showR('sgTestResp',r.status,{test:'URL falsifiée',résultat:ok?'✅ Rejeté (403) — HMAC actif':'❌ Accepté ! Vérifier config HMAC',...d},ok?'ok':'err');
+  toast(ok?'HMAC actif — falsification rejetée ✅':'Problème : URL falsifiée acceptée ❌',ok?'ok':'err');
+}
+
+// ══════════════════════════════════════════
+//  INTEGRATION TEST SUITE
+// ══════════════════════════════════════════
+const BLOCS = [
+  {
+    id:'b1', label:'Bloc 1 — Infrastructure & connectivité', priority:'🔴',
+    tests:[
+      { id:'1.1', name:'Liveness probe', method:'GET', ep:'/v1/ping', expected:'200 — {"pong":true,"version":"1.0.0"}',
+        fn: async()=>{ const r=await get('/v1/ping'); assertStatus(r,200); const d=await r.json(); assert(d.pong===true,'pong doit être true'); return `Pong OK — version ${d.version}`; }},
+      { id:'1.2', name:'Readiness probe (DB + disque)', method:'GET', ep:'/health', expected:'200 — status: ok ou degraded',
+        fn: async()=>{ const r=await get('/health'); assertStatus(r,200); const d=await r.json(); assert(['ok','degraded'].includes(d.status),`status invalide: ${d.status}`); return `Status: ${d.status}, DB: ${d.db}`; }},
+      { id:'1.3', name:'Header X-Request-ID présent', method:'GET', ep:'/v1/ping', expected:'Header X-Request-ID dans la réponse',
+        fn: async()=>{ const r=await get('/v1/ping'); const rid=r.headers.get('x-request-id')||r.headers.get('X-Request-ID'); assert(rid,`Header X-Request-ID absent`); return `X-Request-ID: ${rid.substring(0,18)}…`; }},
+      { id:'1.4', name:'Header X-Service-Version présent', method:'GET', ep:'/v1/ping', expected:'X-Service-Version: 1.0.0',
+        fn: async()=>{ const r=await get('/v1/ping'); const v=r.headers.get('x-service-version')||r.headers.get('X-Service-Version'); assert(v,`Header X-Service-Version absent`); return `X-Service-Version: ${v}`; }},
+      { id:'1.5', name:'Header X-Response-Time présent', method:'GET', ep:'/v1/ping', expected:'X-Response-Time: Xms',
+        fn: async()=>{ const r=await get('/v1/ping'); const t=r.headers.get('x-response-time')||r.headers.get('X-Response-Time'); assert(t,`Header X-Response-Time absent`); return `X-Response-Time: ${t}`; }},
+      { id:'1.6', name:'Endpoint /v1/info — informations intégration', method:'GET', ep:'/v1/info', expected:'200 — catégories, limites, MIME autorisés',
+        fn: async()=>{ const r=await get('/v1/info'); assertStatus(r,200); const d=await r.json(); assert(d.categories&&d.categories.kyc,'categories.kyc absent'); return `Catégories: ${Object.keys(d.categories).join(', ')} — signed_url_ttl: ${d.signed_url_default_ttl_seconds}s`; }},
+      { id:'1.7', name:'Métriques Prometheus', method:'GET', ep:'/v1/metrics', expected:'200 — texte brut avec sendbid_disk_*',
+        fn: async()=>{ const r=await get('/v1/metrics'); assertStatus(r,200); const t=await r.text(); assert(t.includes('sendbid_disk'),'métriques sendbid_disk absentes'); return `${t.split('\n').length} lignes de métriques`; }},
+    ]
+  },
+  {
+    id:'b2', label:'Bloc 2 — Authentification', priority:'🔴',
+    tests:[
+      { id:'2.1', name:'Sans API Key → 401', method:'GET', ep:'/v1/files', expected:'401 MISSING_API_KEY',
+        fn: async()=>{ const r=await fetch(`${C.url}/v1/files`); assertStatus(r,401); const d=await r.json(); assert(d.code==='MISSING_API_KEY'||d.detail?.includes('Missing')||r.status===401,`code: ${d.code}`); return `401 — auth requise confirmée`; }},
+      { id:'2.2', name:'API Key invalide → 403', method:'GET', ep:'/v1/files', expected:'403 INVALID_API_KEY',
+        fn: async()=>{ const r=await fetch(`${C.url}/v1/files`,{headers:{'X-API-Key':'WRONG-KEY','X-User-Id':'u'}}); assertStatus(r,403); return `403 — clé invalide rejetée`; }},
+      { id:'2.3', name:'API Key correcte → accès accordé', method:'GET', ep:'/v1/files', expected:'200',
+        fn: async()=>{ const r=await fetch(`${C.url}/v1/files`,{headers:h()}); assertStatus(r,200); return `200 — authentification OK`; }},
+      { id:'2.4', name:'X-User-Id transmis → propriétaire correct', method:'POST', ep:'/v1/files', expected:'owner_user_id = user envoyé',
+        fn: async()=>{ const blob=await mkJpeg(); const fd=new FormData(); fd.append('file',new File([blob],'t.jpg',{type:'image/jpeg'})); fd.append('category','avatars'); fd.append('owner_user_id','test-owner-999');
+          const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h('test-owner-999'),body:fd}); assertStatus(r,201); const d=await r.json(); assert(d.file_id,'pas de file_id'); return `Fichier créé ${d.file_id?.substring(0,8)}… — owner transmis OK`; }},
+    ]
+  },
+  {
+    id:'b3a', label:'Bloc 3A — Uploads valides', priority:'🔴',
+    tests:[
+      { id:'3A.1', name:'JPEG avatar → 201 + URL publique', method:'POST', ep:'/v1/files [avatars]', expected:'201, url présente, public: true',
+        fn: async()=>{ const d=await upload('avatars'); assert(d.url,`url=null pour avatar`); assert(d.public===true||d.url,'public doit être true'); return `✅ file_id ${d.file_id?.substring(0,8)} — url: ${d.url?.substring(0,40)}…`; }},
+      { id:'3A.2', name:'JPEG KYC → 201 + url: null', method:'POST', ep:'/v1/files [kyc]', expected:'201, url: null, public: false',
+        fn: async()=>{ const d=await upload('kyc'); assert(d.url===null||d.url===undefined,`url non-null pour KYC: ${d.url}`); return `✅ file_id ${d.file_id?.substring(0,8)} — url=null confirmé`; }},
+      { id:'3A.3', name:'JPEG reçu → 201 + url: null', method:'POST', ep:'/v1/files [receipts]', expected:'201, url: null',
+        fn: async()=>{ const d=await upload('receipts'); assert(!d.url,`url non-null pour reçu: ${d.url}`); return `✅ file_id ${d.file_id?.substring(0,8)} — url=null confirmé`; }},
+      { id:'3A.4', name:'File ID est un UUID v4', method:'POST', ep:'/v1/files', expected:'file_id format UUID (36 chars)',
+        fn: async()=>{ const d=await upload('avatars'); const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i; assert(uuid.test(d.file_id),`file_id n'est pas un UUID v4: ${d.file_id}`); return `UUID v4 valide: ${d.file_id}`; }},
+      { id:'3A.5', name:'Checksum SHA-256 valide (64 hex)', method:'POST', ep:'/v1/files', expected:'checksum = 64 chars hexadécimaux',
+        fn: async()=>{ const d=await upload('avatars'); assert(/^[0-9a-f]{64}$/.test(d.checksum),`checksum invalide: ${d.checksum}`); return `Checksum OK: ${d.checksum?.substring(0,16)}…`; }},
+      { id:'3A.6', name:'Nom client neutralisé → UUID serveur', method:'POST', ep:'/v1/files', expected:'file_id UUID ≠ nom original client',
+        fn: async()=>{ const blob=await mkJpeg(); const fd=new FormData(); fd.append('file',new File([blob],'../../malicious.jpg',{type:'image/jpeg'})); fd.append('category','avatars');
+          const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h(),body:fd}); assertStatus(r,201); const d=await r.json(); assert(!d.file_id.includes('malicious'),`file_id contient le nom client`); return `✅ Nom neutralisé — file_id: ${d.file_id?.substring(0,8)}`; }},
+    ]
+  },
+  {
+    id:'b3b', label:'Bloc 3B — Uploads invalides (sécurité)', priority:'🔴',
+    tests:[
+      { id:'3B.1', name:'Fichier vide → 400 EMPTY_FILE', method:'POST', ep:'/v1/files', expected:'400',
+        fn: async()=>{ const r=await uploadRaw(new Uint8Array(0),'empty.jpg','image/jpeg','avatars'); assert([400,422].includes(r.status),`attendu 400, obtenu ${r.status}`); return `✅ Rejeté — ${r.status}`; }},
+      { id:'3B.2', name:'Exécutable Windows (MZ) → 400', method:'POST', ep:'/v1/files', expected:'400 DANGEROUS_FILE',
+        fn: async()=>{ const r=await uploadRaw(new Uint8Array([0x4D,0x5A,...Array(60).fill(0)]),'virus.exe','application/octet-stream','avatars'); assert([400,422].includes(r.status),`attendu 400, obtenu ${r.status}`); return `✅ Exécutable MZ rejeté — ${r.status}`; }},
+      { id:'3B.3', name:'Exécutable Linux (ELF) → 400', method:'POST', ep:'/v1/files', expected:'400 DANGEROUS_FILE',
+        fn: async()=>{ const r=await uploadRaw(new Uint8Array([0x7F,0x45,0x4C,0x46,...Array(60).fill(0)]),'hack.elf','application/octet-stream','avatars'); assert([400,422].includes(r.status),`attendu 400, obtenu ${r.status}`); return `✅ ELF rejeté — ${r.status}`; }},
+      { id:'3B.4', name:'Script shell (#!) → 400', method:'POST', ep:'/v1/files', expected:'400 DANGEROUS_FILE',
+        fn: async()=>{ const r=await uploadRaw(new TextEncoder().encode('#!/bin/bash\nrm -rf /\n'),'hack.sh','text/plain','avatars'); assert([400,422].includes(r.status),`attendu 400, obtenu ${r.status}`); return `✅ Script shell rejeté — ${r.status}`; }},
+      { id:'3B.5', name:'Fichier trop grand (>5 MB avatars) → 413', method:'POST', ep:'/v1/files', expected:'413 FILE_TOO_LARGE',
+        fn: async()=>{ const r=await uploadRaw(new Uint8Array(6*1024*1024).fill(0x42),'big.jpg','image/jpeg','avatars'); assert([400,413,422].includes(r.status),`attendu 413, obtenu ${r.status}`); return `✅ Fichier trop grand rejeté — ${r.status}`; }},
+      { id:'3B.6', name:'Catégorie invalide → 400', method:'POST', ep:'/v1/files', expected:'400 INVALID_CATEGORY',
+        fn: async()=>{ const blob=await mkJpeg(); const fd=new FormData(); fd.append('file',new File([blob],'t.jpg',{type:'image/jpeg'})); fd.append('category','../../etc/passwd');
+          const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h(),body:fd}); assert([400,422].includes(r.status),`attendu 400, obtenu ${r.status}`); return `✅ Catégorie invalide rejetée — ${r.status}`; }},
+    ]
+  },
+  {
+    id:'b4', label:'Bloc 4 — Contrôle d\'accès', priority:'🔴',
+    tests:[
+      { id:'4A.1', name:'Propriétaire → son KYC → 200', method:'GET', ep:'/v1/files/{id}', expected:'200',
+        fn: async()=>{ const d=await upload('kyc','own-user'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{headers:h('own-user')}); assertStatus(r,200); return `✅ Propriétaire accède à son KYC`; }},
+      { id:'4B.1', name:'Autre user → KYC d\'un tiers → 403', method:'GET', ep:'/v1/files/{id}', expected:'403 ACCESS_DENIED',
+        fn: async()=>{ const d=await upload('kyc','own-user-x'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{headers:h('other-user-y')}); assertStatus(r,403); return `✅ Accès tiers refusé — 403`; }},
+      { id:'4A.3', name:'Admin → KYC d\'un tiers → 200', method:'GET', ep:'/v1/files/{id}', expected:'200',
+        fn: async()=>{ const d=await upload('kyc','regular-user'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{headers:h('admin-001','admin')}); assertStatus(r,200); return `✅ Admin accède au KYC — 200`; }},
+      { id:'4B.3', name:'Sans auth → 401', method:'GET', ep:'/v1/files/{id}', expected:'401 MISSING_API_KEY',
+        fn: async()=>{ const d=await upload('kyc'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`); assertStatus(r,401); return `✅ Auth requise — 401`; }},
+      { id:'4B.4', name:'Liste user → seulement ses fichiers', method:'GET', ep:'/v1/files', expected:'owner_user_id = user courant pour tous',
+        fn: async()=>{ await upload('kyc','uid-alice'); await upload('kyc','uid-bob');
+          const r=await fetch(`${C.url}/v1/files`,{headers:h('uid-alice')}); const files=await r.json();
+          const foreign=files.filter(f=>f.owner_user_id!=='uid-alice'); assert(foreign.length===0,`Fichiers d'autres users visibles: ${foreign.map(f=>f.owner_user_id)}`); return `✅ ${files.length} fichiers — tous appartiennent à uid-alice`; }},
+      { id:'4B.5', name:'Non-propriétaire ne peut pas supprimer', method:'DELETE', ep:'/v1/files/{id}', expected:'403',
+        fn: async()=>{ const d=await upload('kyc','del-owner'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{method:'DELETE',headers:h('del-attacker')}); assertStatus(r,403); return `✅ Suppression par tiers refusée — 403`; }},
+      { id:'4B.6', name:'File ID inexistant → 404', method:'GET', ep:'/v1/files/{id}', expected:'404 FILE_NOT_FOUND',
+        fn: async()=>{ const r=await fetch(`${C.url}/v1/files/00000000-0000-0000-0000-000000000000`,{headers:h()}); assertStatus(r,404); return `✅ 404 pour ID inexistant`; }},
+    ]
+  },
+  {
+    id:'b5', label:'Bloc 5 — Sécurité CRITIQUE 🔴', priority:'🔴',
+    tests:[
+      { id:'5.1', name:'KYC jamais accessible publiquement', method:'GET', ep:'/v1/public/avatars/{kyc_id}', expected:'403 ou 404 — JAMAIS 200',
+        fn: async()=>{ const d=await upload('kyc'); const r=await fetch(`${C.url}/v1/public/avatars/${d.file_id}`); assert([403,404].includes(r.status),`🚨 FAILLE : KYC accessible publiquement ! Status: ${r.status}`); return `✅ KYC bloqué publiquement — ${r.status}`; }},
+      { id:'5.2', name:'Reçu jamais accessible publiquement', method:'GET', ep:'/v1/public/avatars/{receipt_id}', expected:'403 ou 404 — JAMAIS 200',
+        fn: async()=>{ const d=await upload('receipts'); const r=await fetch(`${C.url}/v1/public/avatars/${d.file_id}`); assert([403,404].includes(r.status),`🚨 FAILLE : Reçu accessible publiquement ! Status: ${r.status}`); return `✅ Reçu bloqué publiquement — ${r.status}`; }},
+      { id:'5.3', name:'Réponse KYC sans URL publique', method:'POST', ep:'/v1/files [kyc]', expected:'url: null dans la réponse',
+        fn: async()=>{ const d=await upload('kyc'); assert(!d.url,`🚨 FAILLE : URL publique dans réponse KYC: ${d.url}`); return `✅ url=null confirmé pour KYC`; }},
+      { id:'5.4', name:'Réponse reçu sans URL publique', method:'POST', ep:'/v1/files [receipts]', expected:'url: null dans la réponse',
+        fn: async()=>{ const d=await upload('receipts'); assert(!d.url,`🚨 FAILLE : URL publique dans réponse reçu: ${d.url}`); return `✅ url=null confirmé pour reçu`; }},
+      { id:'5.5', name:'Cache-Control no-store sur fichier sensible', method:'GET', ep:'/v1/files/{kyc_id}', expected:'Cache-Control: no-store',
+        fn: async()=>{ const d=await upload('kyc'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{headers:h()}); const cc=r.headers.get('cache-control')||''; assert(cc.includes('no-store')||cc.includes('no-cache'),`Cache-Control manquant: "${cc}"`); return `✅ Cache-Control: ${cc}`; }},
+      { id:'5.6', name:'X-Content-Type-Options: nosniff', method:'GET', ep:'/v1/files/{id}', expected:'nosniff sur binaires',
+        fn: async()=>{ const d=await upload('kyc'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{headers:h()}); const xct=r.headers.get('x-content-type-options')||''; assert(xct==='nosniff',`X-Content-Type-Options: "${xct}" — attendu "nosniff"`); return `✅ X-Content-Type-Options: ${xct}`; }},
+    ]
+  },
+  {
+    id:'b6', label:'Bloc 6 — URLs signées', priority:'🟠',
+    tests:[
+      { id:'6.1', name:'Génération URL signée → 200', method:'GET', ep:'/v1/files/{id}/signed', expected:'200 — signed_url + expires_at',
+        fn: async()=>{ const d=await upload('kyc'); const r=await fetch(`${C.url}/v1/files/${d.file_id}/signed`,{headers:h()}); assertStatus(r,200); const s=await r.json(); assert(s.signed_url,'signed_url absent'); return `✅ TTL: ${s.ttl_seconds}s — expires: ${new Date(s.expires_at).toLocaleTimeString('fr')}`; }},
+      { id:'6.3', name:'Download via URL signée valide → 200', method:'GET', ep:'.../download?expires&sig', expected:'200 — binaire streamé',
+        fn: async()=>{ const d=await upload('kyc'); const sg=await(await fetch(`${C.url}/v1/files/${d.file_id}/signed`,{headers:h()})).json();
+          const url=new URL(sg.signed_url); const r=await fetch(`${C.url}/v1/files/${d.file_id}/download?${url.searchParams}`); assertStatus(r,200); return `✅ Download via URL signée — Content-Type: ${r.headers.get('content-type')}`; }},
+      { id:'6.4', name:'URL signée expirée → 403', method:'GET', ep:'.../download?expires(passé)', expected:'403',
+        fn: async()=>{ const d=await upload('kyc'); const oldTs=Math.floor(Date.now()/1000)-300; const r=await fetch(`${C.url}/v1/files/${d.file_id}/download?expires=${oldTs}&sig=fakesig`); assertStatus(r,403); return `✅ URL expirée rejetée — 403`; }},
+      { id:'6.5', name:'Signature falsifiée → 403', method:'GET', ep:'.../download?sig=FAKE', expected:'403',
+        fn: async()=>{ const d=await upload('kyc'); const sg=await(await fetch(`${C.url}/v1/files/${d.file_id}/signed`,{headers:h()})).json();
+          const url=new URL(sg.signed_url); const p=new URLSearchParams(url.search); p.set('sig','FAKE_SIGNATURE_000'); const r=await fetch(`${C.url}/v1/files/${d.file_id}/download?${p}`); assertStatus(r,403); return `✅ Signature falsifiée rejetée — 403`; }},
+      { id:'6.8', name:'URL signée sans X-API-Key → 200', method:'GET', ep:'.../download (no auth header)', expected:'200 sans header d\'auth',
+        fn: async()=>{ const d=await upload('kyc'); const sg=await(await fetch(`${C.url}/v1/files/${d.file_id}/signed`,{headers:h()})).json();
+          const url=new URL(sg.signed_url); const r=await fetch(`${C.url}/v1/files/${d.file_id}/download?${url.searchParams}`); assertStatus(r,200); return `✅ Accès sans auth header accordé via URL signée`; }},
+    ]
+  },
+  {
+    id:'b7', label:'Bloc 7 — Suppression', priority:'🟠',
+    tests:[
+      { id:'7.1', name:'Suppression logique par propriétaire → 200', method:'DELETE', ep:'/v1/files/{id}', expected:'200 deleted:true',
+        fn: async()=>{ const d=await upload('kyc'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{method:'DELETE',headers:h()}); assertStatus(r,200); const res=await r.json(); assert(res.deleted===true||res.file_id===d.file_id,'réponse suppression invalide'); return `✅ Supprimé — file_id: ${d.file_id?.substring(0,8)}`; }},
+      { id:'7.2', name:'Fichier inaccessible après suppression → 404', method:'GET', ep:'/v1/files/{deleted_id}', expected:'404 après DELETE',
+        fn: async()=>{ const d=await upload('kyc'); await fetch(`${C.url}/v1/files/${d.file_id}`,{method:'DELETE',headers:h()}); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{headers:h()}); assertStatus(r,404); return `✅ 404 après suppression confirmé`; }},
+      { id:'7.3', name:'Admin peut supprimer n\'importe quel fichier', method:'DELETE', ep:'/v1/files/{id}', expected:'200',
+        fn: async()=>{ const d=await upload('kyc','user-to-del'); const r=await fetch(`${C.url}/v1/files/${d.file_id}`,{method:'DELETE',headers:h('admin-001','admin')}); assertStatus(r,200); return `✅ Admin supprime un fichier d'un autre user`; }},
+    ]
+  },
+  {
+    id:'b8', label:'Bloc 8 — Contrat d\'API', priority:'🟠',
+    tests:[
+      { id:'8.1', name:'X-Request-ID sur chaque réponse', method:'GET', ep:'/v1/ping', expected:'UUID dans X-Request-ID',
+        fn: async()=>{ const r=await get('/v1/ping'); const rid=r.headers.get('x-request-id'); assert(rid&&rid.length>10,'X-Request-ID absent ou invalide'); return `✅ X-Request-ID: ${rid?.substring(0,18)}…`; }},
+      { id:'8.3', name:'Propagation X-Request-ID client', method:'GET', ep:'/v1/ping', expected:'ID retourné identique',
+        fn: async()=>{ const myId='my-trace-id-12345'; const r=await fetch(`${C.url}/v1/ping`,{headers:{'X-Request-ID':myId}}); const rid=r.headers.get('x-request-id'); assert(rid===myId,`ID non propagé — envoyé: ${myId}, reçu: ${rid}`); return `✅ X-Request-ID propagé: ${rid}`; }},
+      { id:'8.5', name:'Erreur au format standard (success:false + code)', method:'GET', ep:'/v1/files (sans auth)', expected:'{success:false, code, error}',
+        fn: async()=>{ const r=await fetch(`${C.url}/v1/files`); const d=await r.json(); assert(d.success===false||d.detail,'success:false absent'); return `✅ Format erreur: ${JSON.stringify(d).substring(0,60)}…`; }},
+      { id:'8.7', name:'Content-Type application/json', method:'GET', ep:'/health', expected:'Content-Type: application/json',
+        fn: async()=>{ const r=await get('/health'); const ct=r.headers.get('content-type')||''; assert(ct.includes('application/json'),`Content-Type: "${ct}"`); return `✅ Content-Type: ${ct}`; }},
+      { id:'8.8', name:'Dates en ISO 8601 (created_at)', method:'POST', ep:'/v1/files', expected:'2026-10-08T...',
+        fn: async()=>{ const d=await upload('avatars'); assert(d.file_id,'pas de file_id'); const mr=await fetch(`${C.url}/v1/files/${d.file_id}/meta`,{headers:h()}); const m=await mr.json(); assert(m.created_at&&m.created_at.includes('T'),`created_at invalide: ${m.created_at}`); return `✅ created_at ISO: ${m.created_at}`; }},
+    ]
+  },
+];
+
+// ── Helpers pour les tests
+async function get(ep){ return fetch(`${C.url}${ep}`); }
+function assertStatus(r, code){ if(r.status!==code) throw new Error(`Attendu ${code}, obtenu ${r.status}`); }
+function assert(cond, msg){ if(!cond) throw new Error(msg); }
+async function mkJpeg(){
+  const c=document.createElement('canvas'); c.width=10; c.height=10; c.getContext('2d').fillStyle='#7c6fff'; c.getContext('2d').fillRect(0,0,10,10);
+  return new Promise(r=>c.toBlob(r,'image/jpeg',.8));
+}
+async function upload(cat, uid){
+  const blob=await mkJpeg(); const fd=new FormData();
+  fd.append('file',new File([blob],'t.jpg',{type:'image/jpeg'})); fd.append('category',cat); fd.append('owner_user_id',uid||C.uid);
+  const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h(uid||C.uid),body:fd});
+  if(!r.ok){ const e=await r.json(); throw new Error(`Upload échoué (${r.status}): ${e.detail||JSON.stringify(e)}`); }
+  return r.json();
+}
+async function uploadRaw(bytes, fname, mime, cat){
+  const fd=new FormData(); fd.append('file',new File([bytes],fname,{type:mime})); fd.append('category',cat);
+  return fetch(`${C.url}/v1/files`,{method:'POST',headers:h(),body:fd});
+}
+
+// ── Rendu des blocs
+function initTestBlocs(){
+  if(document.getElementById('testBlocs').innerHTML.trim()) return; // déjà initialisé
+  let html='';
+  for(const bloc of BLOCS){
+    html+=`<div class="test-bloc" id="${bloc.id}">
+      <div class="test-bloc-title" onclick="toggleBloc('${bloc.id}')">
+        <span>${bloc.priority}</span> ${bloc.label}
+        <span class="bloc-badge" id="${bloc.id}-badge">${bloc.tests.length} tests</span>
+        <span class="bloc-arrow">▼</span>
+      </div>
+      <div class="test-items" id="${bloc.id}-items">`;
+    for(const t of bloc.tests){
+      const mCls = t.method==='GET'?'method-get':t.method==='POST'?'method-post':'method-delete';
+      html+=`<div class="ti pending" id="ti-${t.id}">
+        <div class="ti-status">⏺</div>
+        <div class="ti-body">
+          <div class="ti-name">
+            <span class="method ${mCls}">${t.method}</span>
+            <span>${t.name}</span>
+            <span class="endpoint">${t.ep}</span>
+          </div>
+          <div class="ti-expected muted sm">Attendu : ${t.expected}</div>
+          <div class="ti-result" id="tr-${t.id}"></div>
+        </div>
+      </div>`;
+    }
+    html+='</div></div>';
+  }
+  document.getElementById('testBlocs').innerHTML=html;
+}
+
+function toggleBloc(id){
+  const title=document.querySelector(`#${id} .test-bloc-title`);
+  const items=document.getElementById(`${id}-items`);
+  title.classList.toggle('collapsed');
+  items.style.display=items.style.display==='none'?'flex':'none';
+}
+
+let testRunning=false;
+async function runAllTests(){
+  if(testRunning){toast('Tests en cours…','inf');return;}
+  testRunning=true;
+  initTestBlocs();
+  document.getElementById('testSummary').style.display='none';
+  document.getElementById('runAllBtn').disabled=true;
+  document.getElementById('runAllBtn').innerHTML='<span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px"></span> Tests en cours…';
+
+  const allTests=BLOCS.flatMap(b=>b.tests.map(t=>({...t,blocId:b.id})));
+  let passed=0, failed=0, total=allTests.length;
+  const pbar=document.getElementById('runPbar');
+
+  for(let i=0;i<allTests.length;i++){
+    const t=allTests[i];
+    const el=document.getElementById(`ti-${t.id}`);
+    const res=document.getElementById(`tr-${t.id}`);
+    if(!el) continue;
+    el.className='ti running'; el.querySelector('.ti-status').textContent='↻';
+    res.textContent='En cours…';
+    pbar.style.width=`${(i/total)*100}%`;
+
+    try{
+      const msg=await t.fn();
+      el.className='ti pass'; el.querySelector('.ti-status').textContent='✅';
+      res.textContent=msg;
+      passed++;
+    }catch(e){
+      el.className='ti fail'; el.querySelector('.ti-status').textContent='❌';
+      res.textContent=e.message;
+      failed++;
+    }
+    await new Promise(r=>setTimeout(r,80));
+  }
+
+  pbar.style.width='100%';
+  document.getElementById('testSummary').style.display='flex';
+  document.getElementById('tsPass').textContent=`✅ ${passed} passés`;
+  document.getElementById('tsFail').textContent=`❌ ${failed} échoués`;
+  document.getElementById('tsSkip').textContent=`⏭ 0 ignorés`;
+  document.getElementById('tsFail').style.display=failed?'flex':'none';
+
+  testRunning=false;
+  document.getElementById('runAllBtn').disabled=false;
+  document.getElementById('runAllBtn').innerHTML='🚀 Lancer tous les tests';
+  toast(failed===0?`✅ ${passed}/${total} tests passés !`:`❌ ${failed} test(s) échoués`,failed===0?'ok':'err');
+}
+
+function resetTests(){
+  document.getElementById('testBlocs').innerHTML='';
+  document.getElementById('testSummary').style.display='none';
+  document.getElementById('runPbar').style.width='0';
+  initTestBlocs();
+  toast('Tests réinitialisés','inf');
+}
+
+// ══════════════════════════════════════════
+//  HEALTH
+// ══════════════════════════════════════════
+async function checkHealth(){
+  const pill=document.getElementById('spill'), lbl=document.getElementById('slbl');
+  try{
+    const r=await fetch(`${C.url}/health`);
+    const d=await r.json();
+    const ok=d.status==='ok';
+    lbl.textContent=ok?'Service opérationnel':'Service dégradé';
+    pill.className='hdr-pill'+(ok?'':' off');
+  }catch(e){ lbl.textContent='Hors ligne'; pill.className='hdr-pill off'; }
+}
+
+async function loadHealth(){
+  try{
+    const r=await fetch(`${C.url}/health`);
+    const d=await r.json();
+    const disk=d.disk_usage||{}, cats=d.categories||{}, ok=d.status==='ok';
+    const pct=disk.percent||0;
+    const barColor=pct>=80?'linear-gradient(90deg,var(--red),var(--orange))':'linear-gradient(90deg,var(--purple),var(--teal))';
+    let html=`<div class="hgrid">
+      <div class="hcard"><div class="hl">Statut</div><div class="hv" style="color:${ok?'var(--green)':'var(--orange)'}">${d.status}</div><div class="hs">v${d.version||'1.0.0'} · ${d.env}</div></div>
+      <div class="hcard"><div class="hl">Database</div><div class="hv" style="color:${d.db==='ok'?'var(--green)':'var(--red)';font-size:18px}">${d.db}</div><div class="hs">Uptime: ${Math.round(d.uptime_seconds||0)}s</div></div>
+      <div class="hcard"><div class="hl">Disque</div><div class="hv" style="color:${pct>=80?'var(--red)':'var(--green)'}">${pct}%</div><div class="hs">${disk.used_gb||'?'} / ${disk.total_gb||'?'} Go</div><div class="hbar-w"><div class="hbar" style="width:${pct}%;background:${barColor}"></div></div>${pct>=80?'<div style="color:var(--orange);font-size:11px;margin-top:6px;font-weight:600">⚠️ Alerte seuil</div>':''}</div>
+      <div class="hcard"><div class="hl">Libre</div><div class="hv" style="color:var(--teal)">${disk.free_gb||'?'}<span style="font-size:13px"> Go</span></div><div class="hs">Disponible</div></div>
+    </div>`;
+    if(Object.keys(cats).length){
+      html+=`<p class="muted sm fw6" style="text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px">Par catégorie</p><div class="hgrid">`;
+      for(const [cat,info] of Object.entries(cats)){
+        html+=`<div class="hcard"><div class="hl"><span class="badge badge-${cat}">${cat}</span></div><div class="hv" style="font-size:22px">${info.size_mb}<span style="font-size:12px"> MB</span></div><div class="hs">${info.file_count} fichier(s)</div></div>`;
+      }
+      html+='</div>';
+    }
+    if(Object.keys(d.checks||{}).length){
+      html+=`<p class="muted sm fw6 mt2" style="text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px">Checks détaillés</p><div class="tbl-wrap"><table><thead><tr><th>Check</th><th>Statut</th><th>Détail</th></tr></thead><tbody>`;
+      for(const [k,v] of Object.entries(d.checks)){
+        const s=v.status||'?'; const ok2=s==='ok';
+        html+=`<tr><td class="fw6">${k}</td><td><span style="color:${ok2?'var(--green)':'var(--red)';font-weight:600}">${ok2?'✅':s==='missing'?'⚠️':'❌'} ${s}</span></td><td style="font-size:11.5px;color:var(--text3)">${v.detail||v.percent!=null?`${v.percent}%`:''}</td></tr>`;
+      }
+      html+='</tbody></table></div>';
+    }
+    document.getElementById('healthOut').innerHTML=html;
+  }catch(e){
+    document.getElementById('healthOut').innerHTML=`<div class="alert alert-err"><span class="ai">❌</span>Impossible de contacter le service : ${e.message}</div>`;
+  }
+  checkHealth();
+}
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+function showR(id, status, data, cls){
+  const p=document.getElementById(id); p.style.display='block';
+  const c=cls||(status>=200&&status<300?'ok':status===0?'info':'err');
+  p.className='resp '+c;
+  p.textContent=`HTTP ${status||'ERROR'}\n\n${JSON.stringify(data,null,2)}`;
+}
+function cp(t){ navigator.clipboard.writeText(t); toast('Copié','inf'); }
+function toast(msg, type='inf'){
+  const m={ok:'✅',err:'❌',inf:'ℹ️'};
+  const div=document.createElement('div'); div.className=`toast ${type}`; div.innerHTML=`<span>${m[type]}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(div);
+  setTimeout(()=>{div.style.transition='opacity .3s';div.style.opacity='0';setTimeout(()=>div.remove(),320);},3000);
+}
+</script>
+</body>
+</html>
