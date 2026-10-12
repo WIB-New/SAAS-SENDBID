@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
@@ -147,19 +147,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ──────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root():
+    """Landing page — présentation publique du service."""
+    index = os.path.join(ui_path, "index.html")
+    if os.path.exists(index):
+        return FileResponse(index)
     return {
-        "service":  "SAAS SENDBID — Storage Service",
-        "version":  "1.0.0",
-        "status":   "running",
+        "service": "SAAS SENDBID — Storage Service",
+        "version": "1.0.0",
+        "status": "running",
         "uptime_seconds": round(time.time() - _start_time, 1),
-        "endpoints": {
-            "docs":    "/docs",
-            "redoc":   "/redoc",
-            "health":  "/health",
-            "ping":    "/v1/ping",
-            "metrics": "/v1/metrics",
-            "ui":      "/ui",
-        },
     }
 
 
