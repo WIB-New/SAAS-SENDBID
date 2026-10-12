@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 # Create dedicated user (no root)
 RUN useradd -m -u 1000 sendbid && \
-    mkdir -p /var/app/uploads/{avatars,kyc,receipts} && \
+    mkdir -p /var/app/uploads/avatars /var/app/uploads/kyc /var/app/uploads/receipts && \
     chown -R sendbid:sendbid /var/app
 
 WORKDIR /app
