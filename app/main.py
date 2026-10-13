@@ -171,16 +171,21 @@ async def add_integration_headers(request: Request, call_next):
 # ──────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root():
-    """Landing page — présentation publique du service."""
+    """Landing page publique (design Franck)."""
     index = os.path.join(ui_path, "index.html")
     if os.path.exists(index):
         return FileResponse(index)
-    return {
-        "service": "StorageHub — Storage Service",
-        "version": "1.0.0",
-        "status": "running",
-        "uptime_seconds": round(time.time() - _start_time, 1),
-    }
+    return {"service": "StorageHub", "version": "1.0.0",
+            "uptime_seconds": round(time.time() - _start_time, 1)}
+
+
+@app.get("/test", include_in_schema=False)
+async def test_ui():
+    """Suite de tests d'intégration — interface complète de test upload/auth/signed URLs."""
+    test_page = os.path.join(ui_path, "test.html")
+    if os.path.exists(test_page):
+        return FileResponse(test_page)
+    return JSONResponse(status_code=404, content={"error": "test.html not found"})
 
 
 @app.get("/v1/ping", tags=["monitoring"], summary="Liveness probe — aucune auth requise")
