@@ -12,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
 
 from app.config import settings
 from app.database import init_db
@@ -19,6 +20,53 @@ from app.routers import accounts, files, health, public
 from app.schemas import ApiError, ErrorCode
 
 _start_time = time.time()
+
+
+# ── Exception handlers (définis avant FastAPI() pour être passés au constructeur)
+def _error_code(exc: HTTPException) -> str:
+    d = str(exc.detail or "")
+    if "Missing" in d and "API" in d:                                    return "MISSING_API_KEY"
+    if "Invalid API key" in d:                                           return "INVALID_API_KEY"
+    if "HMAC" in d:                                                      return "INVALID_HMAC"
+    if "Access denied" in d:                                             return "ACCESS_DENIED"
+    if "not found" in d.lower():                                         return "FILE_NOT_FOUND"
+    if "too large" in d.lower():                                         return "FILE_TOO_LARGE"
+    if "empty" in d.lower():                                             return "EMPTY_FILE"
+    if "executable" in d.lower() or "script" in d.lower():              return "DANGEROUS_FILE"
+    if "invalid category" in d.lower():                                  return "INVALID_CATEGORY"
+    if "not allowed" in d.lower() and "category" in d.lower():          return "INVALID_CATEGORY"
+    if "not allowed" in d.lower():                                       return "INVALID_MIME"
+    if "signed" in d.lower():                                            return "SIGNED_URL_INVALID"
+    return {401: "MISSING_API_KEY", 403: "FORBIDDEN", 404: "FILE_NOT_FOUND",
+            413: "FILE_TOO_LARGE"}.get(exc.status_code, "INTERNAL_ERROR")
+
+
+async def _http_exc_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    rid = getattr(request.state, "request_id", str(uuid.uuid4()))
+    return JSONResponse(status_code=exc.status_code,
+                        content=ApiError(request_id=rid, error=str(exc.detail or ""),
+                                         code=_error_code(exc)).model_dump())
+
+
+async def _validation_exc_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    rid = getattr(request.state, "request_id", str(uuid.uuid4()))
+    errors = exc.errors()
+    field = errors[0].get("loc", [""])[-1] if errors else None
+    return JSONResponse(status_code=422,
+                        content=ApiError(request_id=rid,
+                                         error="Validation error — check request parameters",
+                                         code=ErrorCode.INVALID_CATEGORY,
+                                         detail=str(errors[0].get("msg", "")) if errors else None,
+                                         field=str(field) if field else None).model_dump())
+
+
+async def _global_exc_handler(request: Request, exc: Exception) -> JSONResponse:
+    rid = getattr(request.state, "request_id", str(uuid.uuid4()))
+    return JSONResponse(status_code=500,
+                        content=ApiError(request_id=rid, error="Internal server error",
+                                         code=ErrorCode.INTERNAL_ERROR,
+                                         detail=str(exc) if not settings.is_production else None
+                                         ).model_dump())
 
 
 @asynccontextmanager
@@ -35,6 +83,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
+    exception_handlers={
+        HTTPException:          _http_exc_handler,
+        RequestValidationError: _validation_exc_handler,
+        Exception:              _global_exc_handler,
+    },
     title="StorageHub — Secure Storage API",
     description=(
         "## API de stockage de fichiers sécurisée — multi-tenant SaaS\n\n"
@@ -62,16 +115,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── CORS
-origins = ["*"] if not settings.is_production else [settings.base_url]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Service-Version"],
-)
+# ── CORS (allow_credentials=True incompatible avec wildcard — séparé par env)
+if settings.is_production:
+    app.add_middleware(CORSMiddleware, allow_origins=[settings.base_url],
+                       allow_credentials=True, allow_methods=["*"],
+                       allow_headers=["*"], expose_headers=["X-Request-ID", "X-Service-Version"])
+else:
+    app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                       allow_credentials=False, allow_methods=["*"],
+                       allow_headers=["*"], expose_headers=["X-Request-ID", "X-Service-Version"])
 
 # ── Routers
 app.include_router(files.router)
@@ -106,41 +158,12 @@ async def add_integration_headers(request: Request, call_next):
     response.headers["X-Request-ID"]      = request_id
     response.headers["X-Service-Version"] = "1.0.0"
     response.headers["X-Response-Time"]   = f"{elapsed_ms}ms"
+    # Désactiver le cache navigateur pour /ui en dev (évite de servir du JS périmé)
+    if not settings.is_production and request.url.path.startswith("/ui"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"]        = "no-cache"
+        response.headers["Expires"]       = "0"
     return response
-
-
-# ──────────────────────────────────────────────
-#  Handlers d'erreur globaux
-# ──────────────────────────────────────────────
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    rid = getattr(request.state, "request_id", str(uuid.uuid4()))
-    errors = exc.errors()
-    field = errors[0].get("loc", [""])[- 1] if errors else None
-    return JSONResponse(
-        status_code=422,
-        content=ApiError(
-            request_id=rid,
-            error="Validation error — check request parameters",
-            code=ErrorCode.INVALID_CATEGORY,
-            detail=str(errors[0].get("msg", "")) if errors else None,
-            field=str(field) if field else None,
-        ).model_dump(),
-    )
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    rid = getattr(request.state, "request_id", str(uuid.uuid4()))
-    return JSONResponse(
-        status_code=500,
-        content=ApiError(
-            request_id=rid,
-            error="Internal server error",
-            code=ErrorCode.INTERNAL_ERROR,
-            detail=str(exc) if not settings.is_production else None,
-        ).model_dump(),
-    )
 
 
 # ──────────────────────────────────────────────
