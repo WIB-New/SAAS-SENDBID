@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StorageHub — Intégration externe</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0f1117;
+  --surface: #1a1d27;
+  --border:  #2a2d3a;
+  --text:    #e2e8f0;
+  --muted:   #8b92a5;
+  --accent:  #6366f1;
+  --green:   #10b981;
+  --red:     #ef4444;
+  --yellow:  #f59e0b;
+  --blue:    #3b82f6;
+  --radius:  12px;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(15,17,23,.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem; height: 60px;
+}
+.logo { font-weight: 700; font-size: 1.1rem; color: var(--accent); }
+.nav-links { display: flex; gap: 1.5rem; }
+.nav-links a { color: var(--muted); text-decoration: none; font-size: .9rem; transition: color .2s; }
+.nav-links a:hover { color: var(--text); }
+
+/* LAYOUT */
+main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+h1 { font-size: 2rem; font-weight: 800; margin-bottom: .5rem; }
+.subtitle { color: var(--muted); margin-bottom: 2.5rem; }
+
+/* STATUS BANNER */
+#status-banner {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1rem 1.5rem;
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; flex-shrink: 0; }
+.dot.red { background: var(--red); animation: none; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+#status-url { font-family: var(--mono); color: var(--accent); font-size: .85rem; word-break: break-all; }
+
+/* SECTION */
+section { margin-bottom: 3rem; }
+h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+
+/* PLANS */
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.plan-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem; position: relative;
+  transition: border-color .25s, transform .25s;
+}
+.plan-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.plan-badge {
+  position: absolute; top: -10px; right: 1rem;
+  font-size: .7rem; font-weight: 700; padding: .2rem .6rem;
+  border-radius: 20px; text-transform: uppercase;
+}
+.plan-price { font-size: 1.8rem; font-weight: 800; margin: .5rem 0; }
+.plan-price span { font-size: .9rem; font-weight: 400; color: var(--muted); }
+.plan-storage { font-size: 1rem; color: var(--accent); font-weight: 600; margin-bottom: .75rem; }
+.plan-features { list-style: none; font-size: .85rem; color: var(--muted); }
+.plan-features li { padding: .2rem 0; }
+.plan-features li::before { content: "✓ "; color: var(--green); }
+.plan-features li.no::before { content: "✗ "; color: var(--red); }
+.plan-btn {
+  display: block; width: 100%; margin-top: 1rem; padding: .6rem;
+  border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  border-radius: 8px; cursor: pointer; font-weight: 600; transition: all .2s;
+}
+.plan-btn:hover { background: var(--accent); color: #fff; }
+
+/* TEST CONSOLE */
+.test-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.test-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.test-header input {
+  flex: 1; min-width: 200px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: .5rem .75rem; border-radius: 8px;
+  font-family: var(--mono); font-size: .85rem;
+}
+.test-header input::placeholder { color: var(--muted); }
+.btn {
+  padding: .5rem 1.2rem; border-radius: 8px; font-weight: 600;
+  border: none; cursor: pointer; font-size: .9rem; transition: all .2s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #4f52d6; }
+.btn-green  { background: var(--green); color: #fff; }
+.btn-green:hover { opacity: .9; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); }
+.result-area {
+  font-family: var(--mono); font-size: .82rem; color: #a0aec0;
+  padding: 1.25rem 1.5rem; min-height: 120px; white-space: pre-wrap; word-break: break-all;
+  max-height: 340px; overflow-y: auto;
+}
+.ok  { color: var(--green); }
+.err { color: var(--red); }
+
+/* CODE TABS */
+.tab-row { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.tab-btn {
+  padding: .35rem .9rem; border-radius: 6px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); font-size: .82rem; cursor: pointer; transition: all .15s;
+}
+.tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.code-block { display: none; }
+.code-block.active { display: block; }
+pre {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem 1.5rem;
+  font-family: var(--mono); font-size: .82rem; overflow-x: auto;
+  color: #a0aec0; position: relative;
+}
+.copy-btn {
+  position: absolute; top: .75rem; right: .75rem;
+  padding: .25rem .65rem; background: var(--border); border: none;
+  color: var(--text); border-radius: 6px; font-size: .75rem; cursor: pointer; transition: background .15s;
+}
+.copy-btn:hover { background: var(--accent); }
+.kw  { color: #c084fc; }
+.str { color: #86efac; }
+.cmt { color: #64748b; }
+.fn  { color: #60a5fa; }
+.num { color: #fb923c; }
+
+/* REGISTER */
+.register-form { display: grid; gap: 1rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: .4rem; }
+.form-group label { font-size: .85rem; color: var(--muted); }
+.form-group input, .form-group select {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: .6rem .85rem; border-radius: 8px; font-size: .9rem; outline: none;
+  transition: border-color .2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+#creds-box {
+  margin-top: 1rem; display: none;
+  background: #0d1a12; border: 1px solid #10b981; border-radius: var(--radius); padding: 1.25rem;
+}
+#creds-box h3 { color: var(--green); margin-bottom: .75rem; font-size: 1rem; }
+.cred-item { display: flex; align-items: center; gap: .75rem; margin-bottom: .5rem; }
+.cred-label { color: var(--muted); font-size: .8rem; min-width: 110px; }
+.cred-value { font-family: var(--mono); font-size: .82rem; color: var(--text); word-break: break-all; }
+
+/* UPLOAD TEST */
+.upload-area {
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem;
+  text-align: center; cursor: pointer; transition: border-color .2s; margin-bottom: 1rem;
+}
+.upload-area.drag { border-color: var(--accent); background: rgba(99,102,241,.05); }
+.upload-area input { display: none; }
+
+/* USAGE BAR */
+.usage-bar-wrap { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; margin-top: .5rem; }
+.usage-bar { height: 100%; border-radius: 99px; background: var(--green); transition: width .5s; }
+.usage-bar.warn   { background: var(--yellow); }
+.usage-bar.danger { background: var(--red); }
+
+/* TOAST */
+#toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: .75rem 1.25rem; font-size: .88rem; display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5); z-index: 9999; max-width: 340px;
+}
+#toast.ok  { border-color: var(--green); color: var(--green); }
+#toast.err { border-color: var(--red);   color: var(--red); }
+
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+  .plans-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">⚡ StorageHub</span>
+  <div class="nav-links">
+    <a href="/">Accueil</a>
+    <a href="/test">Tests</a>
+    <a href="/ui/dashboard.html">Dashboard</a>
+    <a href="/docs">Swagger</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Intégration externe</h1>
+  <p class="subtitle">Connectez votre application au service StorageHub tournant sur cet ordinateur.</p>
+
+  <!-- STATUS BANNER -->
+  <div id="status-banner">
+    <div class="dot" id="status-dot"></div>
+    <div>
+      <div style="font-weight:600; font-size:.95rem;" id="status-text">Vérification du service…</div>
+      <div id="status-url" style="margin-top:.25rem;"></div>
+    </div>
+    <button class="btn btn-outline" onclick="checkStatus()" style="margin-left:auto;">Rafraîchir</button>
+  </div>
+
+  <!-- PLANS -->
+  <section>
+    <h2>Plans d'abonnement</h2>
+    <div class="plans-grid" id="plans-grid">
+      <div style="color:var(--muted);font-size:.85rem;">Chargement…</div>
+    </div>
+  </section>
+
+  <!-- INSCRIPTION -->
+  <section>
+    <h2>Créer un compte (inscription)</h2>
+    <div class="test-box">
+      <div style="padding:1.5rem;">
+        <div class="register-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Email</label>
+              <input id="reg-email" type="email" placeholder="you@company.com">
+            </div>
+            <div class="form-group">
+              <label>Mot de passe (min 8 car.)</label>
+              <input id="reg-pass" type="password" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nom de l'application / société</label>
+              <input id="reg-company" type="text" placeholder="Mon App">
+            </div>
+            <div class="form-group">
+              <label>Plan</label>
+              <select id="reg-plan">
+                <option value="free">Gratuit — 0€/mois — 500 MB</option>
+                <option value="starter">Starter — 5€/mois — 2 GB</option>
+                <option value="pro">Pro — 19€/mois — 50 GB</option>
+                <option value="business">Business — 79€/mois — 500 GB</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="register()" style="justify-self:start;">Créer le compte →</button>
+        </div>
+        <div id="creds-box">
+          <h3>✅ Compte créé — conservez ces credentials</h3>
+          <div class="cred-item"><span class="cred-label">API Key :</span><span class="cred-value" id="cred-key"></span><button class="btn btn-outline" style="font-size:.75rem;padding:.2rem .5rem;" onclick="copy('cred-key')">Copier</button></div>
+          <div class="cred-item"><span class="cred-label">HMAC Secret :</span><span class="cred-value" id="cred-hmac"></span><button class="btn btn-outline" style="font-size:.75rem;padding:.2rem .5rem;" onclick="copy('cred-hmac')">Copier</button></div>
+          <div class="cred-item"><span class="cred-label">Client ID :</span><span class="cred-value" id="cred-cid"></span></div>
+          <div class="cred-item"><span class="cred-label">Plan :</span><span class="cred-value" id="cred-plan"></span></div>
+          <p style="margin-top:.75rem;font-size:.8rem;color:var(--muted);">⚠️ Copiez l'API Key maintenant — elle ne sera plus affichée en clair.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEST CONNEXION -->
+  <section>
+    <h2>Tester la connexion</h2>
+    <div class="test-box">
+      <div class="test-header">
+        <input id="test-key" placeholder="X-API-Key (collez votre clé ici)" value="dev-api-key-sendbid-2024">
+        <input id="test-uid" placeholder="User ID (optionnel)" value="user-ext-001" style="max-width:180px;">
+        <button class="btn btn-primary" onclick="testConnect()">Tester →</button>
+        <button class="btn btn-outline" onclick="clearResult('test-result')">Effacer</button>
+      </div>
+      <div class="result-area" id="test-result">En attente…</div>
+    </div>
+  </section>
+
+  <!-- UPLOAD TEST -->
+  <section>
+    <h2>Tester un upload depuis l'extérieur</h2>
+    <div class="test-box">
+      <div class="test-header">
+        <input id="up-key" placeholder="X-API-Key" value="dev-api-key-sendbid-2024">
+        <select id="up-cat" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:.5rem .75rem;border-radius:8px;font-size:.85rem;">
+          <option value="avatars">avatars (public)</option>
+          <option value="kyc">kyc (chiffré)</option>
+          <option value="receipts">receipts (chiffré)</option>
+        </select>
+      </div>
+      <div style="padding:1rem 1.5rem;">
+        <label class="upload-area" for="up-file" id="upload-area" ondragover="onDrag(event)" ondrop="onDrop(event)">
+          <input type="file" id="up-file" onchange="previewFile(this)">
+          <div id="upload-hint">📁 Glissez un fichier ici ou cliquez pour choisir<br><span style="font-size:.8rem;color:var(--muted);">JPEG, PNG, WebP (avatars) · PDF, JPEG (kyc/receipts)</span></div>
+        </label>
+        <button class="btn btn-green" onclick="uploadFile()">Envoyer le fichier →</button>
+      </div>
+      <div class="result-area" id="up-result">En attente…</div>
+    </div>
+  </section>
+
+  <!-- QUOTA EN TEMPS RÉEL -->
+  <section>
+    <h2>Quota en temps réel</h2>
+    <div class="test-box">
+      <div class="test-header">
+        <input id="quota-key" placeholder="X-API-Key" value="dev-api-key-sendbid-2024">
+        <button class="btn btn-primary" onclick="checkQuota()">Voir le quota →</button>
+      </div>
+      <div style="padding:1.25rem 1.5rem;" id="quota-display">
+        <div style="color:var(--muted);font-size:.85rem;">Entrez votre clé et cliquez sur "Voir le quota"</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXEMPLES DE CODE -->
+  <section>
+    <h2>Exemples d'intégration</h2>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="setTab('curl')">cURL</button>
+      <button class="tab-btn" onclick="setTab('python')">Python</button>
+      <button class="tab-btn" onclick="setTab('js')">JavaScript</button>
+      <button class="tab-btn" onclick="setTab('php')">PHP</button>
+    </div>
+
+    <div id="tab-curl" class="code-block active">
+      <pre id="code-curl"><button class="copy-btn" onclick="copyCode('code-curl')">Copier</button><span class="cmt"># 1. Créer un compte</span>
+<span class="fn">curl</span> -X POST <span id="base-url-curl">BASE_URL</span>/v1/accounts/register \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"email":"you@app.com","password":"MonMotDePasse","company_name":"Mon App"}'</span>
+
+<span class="cmt"># 2. Upload d'un avatar</span>
+<span class="fn">curl</span> -X POST <span id="base-url-curl2">BASE_URL</span>/v1/files \
+  -H <span class="str">"X-API-Key: VOTRE_CLE_API"</span> \
+  -H <span class="str">"X-User-Id: user-123"</span> \
+  -F <span class="str">"file=@photo.jpg"</span> \
+  -F <span class="str">"category=avatars"</span>
+
+<span class="cmt"># 3. Upload KYC (chiffré automatiquement)</span>
+<span class="fn">curl</span> -X POST <span id="base-url-curl3">BASE_URL</span>/v1/files \
+  -H <span class="str">"X-API-Key: VOTRE_CLE_API"</span> \
+  -H <span class="str">"X-User-Id: user-123"</span> \
+  -F <span class="str">"file=@id_card.pdf"</span> \
+  -F <span class="str">"category=kyc"</span> \
+  -F <span class="str">'tags={"doc_type":"id_card"}'</span>
+
+<span class="cmt"># 4. Lister les fichiers (paginé)</span>
+<span class="fn">curl</span> -H <span class="str">"X-API-Key: VOTRE_CLE_API"</span> \
+  <span id="base-url-curl4">BASE_URL</span>/v1/files?page=1\&amp;limit=20
+
+<span class="cmt"># 5. URL signée (accès temporaire 60s)</span>
+<span class="fn">curl</span> -H <span class="str">"X-API-Key: VOTRE_CLE_API"</span> \
+  <span id="base-url-curl5">BASE_URL</span>/v1/files/FILE_ID/signed?ttl=60
+
+<span class="cmt"># 6. Voir le quota</span>
+<span class="fn">curl</span> -H <span class="str">"X-API-Key: VOTRE_CLE_API"</span> \
+  <span id="base-url-curl6">BASE_URL</span>/v1/accounts/usage</pre>
+    </div>
+
+    <div id="tab-python" class="code-block">
+      <pre id="code-python"><button class="copy-btn" onclick="copyCode('code-python')">Copier</button><span class="cmt"># pip install httpx</span>
+<span class="kw">import</span> httpx
+
+BASE = <span class="str" id="base-url-py">"BASE_URL"</span>
+API_KEY = <span class="str">"VOTRE_CLE_API"</span>
+HEADERS = {
+    <span class="str">"X-API-Key"</span>:   API_KEY,
+    <span class="str">"X-User-Id"</span>:   <span class="str">"user-123"</span>,
+    <span class="str">"X-User-Role"</span>: <span class="str">"user"</span>,
+}
+
+<span class="cmt"># Upload avatar</span>
+<span class="kw">with</span> open(<span class="str">"photo.jpg"</span>, <span class="str">"rb"</span>) <span class="kw">as</span> f:
+    resp = httpx.post(
+        <span class="fn">f"{BASE}/v1/files"</span>,
+        headers=HEADERS,
+        files={<span class="str">"file"</span>: (<span class="str">"photo.jpg"</span>, f, <span class="str">"image/jpeg"</span>)},
+        data={<span class="str">"category"</span>: <span class="str">"avatars"</span>, <span class="str">"tags"</span>: <span class="str">'{"user_id":"123"}'</span>}
+    )
+result = resp.json()
+print(result[<span class="str">"url"</span>])           <span class="cmt"># URL publique de l'avatar</span>
+print(result[<span class="str">"thumbnail_url"</span>])  <span class="cmt"># Miniature 256×256</span>
+print(result[<span class="str">"file_id"</span>])       <span class="cmt"># ID pour download/delete/signed URL</span>
+
+<span class="cmt"># Vérifier le quota</span>
+usage = httpx.get(<span class="fn">f"{BASE}/v1/accounts/usage"</span>, headers=HEADERS).json()
+print(<span class="fn">f"Utilisé: {usage['storage']['used_label']} / {usage['storage']['quota_label']}"</span>)
+print(<span class="fn">f"Alerte: {usage['alerts']['quota_warning']}"</span>)
+
+<span class="cmt"># URL signée (60 secondes)</span>
+signed = httpx.get(<span class="fn">f"{BASE}/v1/files/{{file_id}}/signed"</span>, headers=HEADERS, params={<span class="str">"ttl"</span>: <span class="num">60</span>}).json()
+print(signed[<span class="str">"signed_url"</span>])  <span class="cmt"># Partageable sans clé API</span></pre>
+    </div>
+
+    <div id="tab-js" class="code-block">
+      <pre id="code-js"><button class="copy-btn" onclick="copyCode('code-js')">Copier</button><span class="cmt">// Utiliser le SDK officiel : sdk/javascript/storagehub.js</span>
+<span class="kw">import</span> { StorageHub } <span class="kw">from</span> <span class="str">'./sdk/javascript/storagehub.js'</span>;
+
+<span class="kw">const</span> hub = <span class="kw">new</span> <span class="fn">StorageHub</span>({
+  apiKey:  <span class="str">"VOTRE_CLE_API"</span>,
+  baseUrl: <span class="str" id="base-url-js">"BASE_URL"</span>,
+  userId:  <span class="str">"user-123"</span>,
+});
+
+<span class="cmt">// Upload depuis &lt;input type="file"&gt;</span>
+<span class="kw">const</span> result = <span class="kw">await</span> hub.<span class="fn">upload</span>(file, <span class="str">"avatars"</span>, {
+  tags: { user_id: <span class="str">"123"</span>, source: <span class="str">"mobile"</span> }
+});
+console.<span class="fn">log</span>(result.url);           <span class="cmt">// URL publique</span>
+console.<span class="fn">log</span>(result.thumbnail_url); <span class="cmt">// Miniature</span>
+
+<span class="cmt">// Quota</span>
+<span class="kw">const</span> usage = <span class="kw">await</span> hub.<span class="fn">request</span>(<span class="str">'GET'</span>, <span class="str">'/v1/accounts/usage'</span>);
+<span class="kw">const</span> pct = usage.storage.used_percent;
+
+<span class="cmt">// Upload bulk (plusieurs fichiers)</span>
+<span class="kw">const</span> bulk = <span class="kw">await</span> hub.<span class="fn">uploadBulk</span>([file1, file2, file3], <span class="str">"receipts"</span>);
+console.<span class="fn">log</span>(<span class="fn">`${bulk.uploaded} ok, ${bulk.failed} erreurs`</span>);
+
+<span class="cmt">// Webhook — recevoir les notifications</span>
+<span class="kw">await</span> hub.<span class="fn">createWebhook</span>(<span class="str">"https://monapp.com/webhooks"</span>, <span class="str">"file.uploaded,file.deleted"</span>);</pre>
+    </div>
+
+    <div id="tab-php" class="code-block">
+      <pre id="code-php"><button class="copy-btn" onclick="copyCode('code-php')">Copier</button><span class="cmt">&lt;?php</span>
+<span class="kw">define</span>(<span class="str">'STORAGEHUB_URL'</span>, <span class="str" id="base-url-php">'BASE_URL'</span>);
+<span class="kw">define</span>(<span class="str">'API_KEY'</span>, <span class="str">'VOTRE_CLE_API'</span>);
+
+<span class="cmt">// Upload d'un fichier</span>
+<span class="kw">function</span> <span class="fn">uploadFile</span>(<span class="str">$filePath</span>, <span class="str">$category</span>, <span class="str">$userId</span>) {
+    <span class="str">$curl</span> = curl_init();
+    curl_setopt_array(<span class="str">$curl</span>, [
+        CURLOPT_URL            => STORAGEHUB_URL . <span class="str">'/v1/files'</span>,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_HTTPHEADER     => [
+            <span class="str">'X-API-Key: '</span>   . API_KEY,
+            <span class="str">'X-User-Id: '</span>   . <span class="str">$userId</span>,
+            <span class="str">'X-User-Role: user'</span>,
+        ],
+        CURLOPT_POSTFIELDS => [
+            <span class="str">'file'</span>     => <span class="kw">new</span> CURLFile(<span class="str">$filePath</span>),
+            <span class="str">'category'</span> => <span class="str">$category</span>,
+        ],
+    ]);
+    <span class="str">$response</span> = curl_exec(<span class="str">$curl</span>);
+    curl_close(<span class="str">$curl</span>);
+    <span class="kw">return</span> json_decode(<span class="str">$response</span>, true);
+}
+
+<span class="cmt">// Exemple d'utilisation</span>
+<span class="str">$result</span> = <span class="fn">uploadFile</span>(<span class="str">'/var/www/uploads/photo.jpg'</span>, <span class="str">'avatars'</span>, <span class="str">'user-123'</span>);
+echo <span class="str">$result</span>[<span class="str">'url'</span>] . PHP_EOL;
+
+<span class="cmt">// Vérifier le quota</span>
+<span class="kw">function</span> <span class="fn">getUsage</span>() {
+    <span class="str">$curl</span> = curl_init(STORAGEHUB_URL . <span class="str">'/v1/accounts/usage'</span>);
+    curl_setopt_array(<span class="str">$curl</span>, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [<span class="str">'X-API-Key: '</span> . API_KEY],
+    ]);
+    <span class="kw">return</span> json_decode(curl_exec(<span class="str">$curl</span>), true);
+}
+
+<span class="str">$usage</span> = <span class="fn">getUsage</span>();
+echo <span class="str">"Utilisé: "</span> . <span class="str">$usage</span>[<span class="str">'storage'</span>][<span class="str">'used_label'</span>];
+<span class="cmt">?&gt;</span></pre>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const BASE = window.location.origin;
+
+// Met à jour toutes les occurrences de BASE_URL dans les exemples
+document.querySelectorAll('[id^="base-url"]').forEach(el => el.textContent = BASE);
+
+// ─── STATUS ─────────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch(`${BASE}/v1/integration/status`);
+    const d = await r.json();
+    document.getElementById('status-dot').className = 'dot' + (d.status === 'operational' ? '' : ' red');
+    document.getElementById('status-text').textContent =
+      d.status === 'operational' ? '✅ Service opérationnel' : '⚠️ Service dégradé';
+    document.getElementById('status-url').textContent = d.public_url;
+    loadPlans(d.plans);
+  } catch(e) {
+    document.getElementById('status-dot').className = 'dot red';
+    document.getElementById('status-text').textContent = '❌ Service inaccessible — ' + e.message;
+  }
+}
+
+// ─── PLANS ──────────────────────────────────────────────────────────────────
+function loadPlans(plans) {
+  const el = document.getElementById('plans-grid');
+  if (!plans) return;
+  const colors = { free:'#6b7280', starter:'#3b82f6', pro:'#8b5cf6', business:'#f59e0b' };
+  el.innerHTML = Object.entries(plans).map(([id, p]) => `
+    <div class="plan-card" style="border-color:${colors[id]}33;">
+      <span class="plan-badge" style="background:${colors[id]}22;color:${colors[id]};">${p.name}</span>
+      <div class="plan-price">${p.price_monthly_eur}<span> €/mois</span></div>
+      <div class="plan-storage">${p.storage_label}</div>
+      <ul class="plan-features">
+        <li>${p.storage_label} de stockage</li>
+        ${id !== 'free' ? '<li>Chiffrement AES-256</li>' : '<li class="no">Chiffrement</li>'}
+        ${id !== 'free' ? '<li>Webhooks</li>' : '<li class="no">Webhooks</li>'}
+        ${['pro','business'].includes(id) ? '<li>Upload bulk</li>' : '<li class="no">Upload bulk</li>'}
+        <li>URLs signées</li>
+        <li>Miniatures auto</li>
+      </ul>
+      <button class="plan-btn" onclick="selectPlan('${id}')" style="border-color:${colors[id]};color:${colors[id]};">
+        ${id === 'free' ? 'Plan par défaut' : 'Sélectionner'}
+      </button>
+    </div>
+  `).join('');
+}
+
+function selectPlan(plan) {
+  document.getElementById('reg-plan').value = plan;
+  document.getElementById('reg-plan').closest('section, .test-box')?.scrollIntoView?.({ behavior: 'smooth' });
+  toast('Plan sélectionné : ' + plan, 'ok');
+}
+
+// ─── INSCRIPTION ─────────────────────────────────────────────────────────────
+async function register() {
+  const email = document.getElementById('reg-email').value.trim();
+  const pass  = document.getElementById('reg-pass').value;
+  const comp  = document.getElementById('reg-company').value.trim();
+  const plan  = document.getElementById('reg-plan').value;
+
+  if (!email || !pass) { toast('Email et mot de passe requis', 'err'); return; }
+
+  try {
+    const r = await fetch(`${BASE}/v1/accounts/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, company_name: comp, plan }),
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Erreur lors de l\'inscription', 'err'); return; }
+
+    document.getElementById('cred-key').textContent  = d.api_key;
+    document.getElementById('cred-hmac').textContent = d.hmac_secret;
+    document.getElementById('cred-cid').textContent  = d.client_id;
+    document.getElementById('cred-plan').textContent = d.plan + ' — ' + (d.plan_details?.name || '');
+    document.getElementById('creds-box').style.display = 'block';
+
+    // Pré-remplir les champs de test
+    document.getElementById('test-key').value  = d.api_key;
+    document.getElementById('up-key').value    = d.api_key;
+    document.getElementById('quota-key').value = d.api_key;
+
+    toast('Compte créé avec succès !', 'ok');
+  } catch(e) { toast('Erreur réseau : ' + e.message, 'err'); }
+}
+
+// ─── TEST CONNEXION ──────────────────────────────────────────────────────────
+async function testConnect() {
+  const key = document.getElementById('test-key').value.trim();
+  const uid = document.getElementById('test-uid').value.trim();
+  if (!key) { toast('Entrez votre API key', 'err'); return; }
+
+  const el = document.getElementById('test-result');
+  el.textContent = '⏳ Test en cours…';
+
+  try {
+    const r = await fetch(`${BASE}/v1/integration/test`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key':   key,
+        'X-User-Id':   uid || 'ext-user',
+        'X-User-Role': 'user',
+      },
+    });
+    const d = await r.json();
+    if (r.ok) {
+      const q = d.quota;
+      el.className = 'result-area ok';
+      el.textContent = [
+        '✅ CONNEXION RÉUSSIE',
+        '',
+        `  Plan       : ${d.client.plan_label} (${d.client.plan})`,
+        `  Client ID  : ${d.client.client_id}`,
+        `  Rôle       : ${d.client.role}`,
+        '',
+        `  Stockage   : ${q.storage_used} / ${q.storage_limit} (${q.used_percent}%)`,
+        `  Fichiers   : ${q.files_count}`,
+        `  Alerte     : ${q.alert ? '⚠️ Plus de 90% utilisé' : '✅ OK'}`,
+        '',
+        `  Max avatar : ${d.capabilities.max_file_sizes.avatars}`,
+        `  Max KYC    : ${d.capabilities.max_file_sizes.kyc}`,
+        `  TTL signé  : ${d.capabilities.signed_url_max_ttl}`,
+        `  Webhooks   : ${d.capabilities.webhooks}`,
+        `  Chiffrement: ${d.capabilities.encryption}`,
+      ].join('\n');
+    } else {
+      el.className = 'result-area err';
+      el.textContent = `❌ ÉCHEC [${r.status}]\n\n  ${d.error || JSON.stringify(d, null, 2)}`;
+    }
+  } catch(e) {
+    el.className = 'result-area err';
+    el.textContent = '❌ Erreur réseau : ' + e.message;
+  }
+}
+
+// ─── UPLOAD TEST ─────────────────────────────────────────────────────────────
+function onDrag(e) { e.preventDefault(); document.getElementById('upload-area').classList.add('drag'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-area').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) { document.getElementById('up-file').files = e.dataTransfer.files; previewFile({ files: e.dataTransfer.files }); }
+}
+function previewFile(input) {
+  const f = input.files?.[0];
+  if (f) document.getElementById('upload-hint').innerHTML =
+    `📄 <strong>${f.name}</strong> — ${(f.size/1024).toFixed(1)} KB<br><span style="font-size:.8rem;color:var(--muted);">Prêt à envoyer</span>`;
+}
+
+async function uploadFile() {
+  const key = document.getElementById('up-key').value.trim();
+  const cat = document.getElementById('up-cat').value;
+  const file = document.getElementById('up-file').files[0];
+  const el  = document.getElementById('up-result');
+
+  if (!key)  { toast('Entrez votre API key', 'err'); return; }
+  if (!file) { toast('Choisissez un fichier', 'err'); return; }
+
+  el.className = 'result-area';
+  el.textContent = '⏳ Upload en cours…';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('category', cat);
+  fd.append('tags', JSON.stringify({ uploaded_via: 'integration_dashboard', source: 'external' }));
+
+  try {
+    const t0 = performance.now();
+    const r = await fetch(`${BASE}/v1/files`, {
+      method: 'POST',
+      headers: { 'X-API-Key': key, 'X-User-Id': 'ext-user', 'X-User-Role': 'user' },
+      body: fd,
+    });
+    const ms = (performance.now() - t0).toFixed(0);
+    const d = await r.json();
+
+    if (r.ok) {
+      el.className = 'result-area ok';
+      el.textContent = [
+        `✅ UPLOAD RÉUSSI (${ms}ms)`,
+        '',
+        `  file_id      : ${d.file_id}`,
+        `  category     : ${d.category}`,
+        `  size         : ${(d.size/1024).toFixed(1)} KB`,
+        `  mime         : ${d.mime}`,
+        `  version      : ${d.version}`,
+        `  public       : ${d.public}`,
+        `  url          : ${d.url || '(privé)'}`,
+        `  thumbnail    : ${d.thumbnail_url || '(non générée)'}`,
+      ].join('\n');
+
+      if (d.url) {
+        const img = document.createElement('img');
+        img.src = d.url; img.style = 'max-width:120px;max-height:120px;border-radius:8px;margin-top:.75rem;display:block;';
+        el.appendChild(img);
+      }
+    } else {
+      el.className = 'result-area err';
+      el.textContent = `❌ ERREUR [${r.status}] code=${d.code}\n\n  ${d.error}`;
+    }
+  } catch(e) {
+    el.className = 'result-area err';
+    el.textContent = '❌ Erreur réseau : ' + e.message;
+  }
+}
+
+// ─── QUOTA ───────────────────────────────────────────────────────────────────
+async function checkQuota() {
+  const key = document.getElementById('quota-key').value.trim();
+  const el  = document.getElementById('quota-display');
+  if (!key) { toast('Entrez votre API key', 'err'); return; }
+
+  try {
+    const r = await fetch(`${BASE}/v1/accounts/usage`, {
+      headers: { 'X-API-Key': key, 'X-User-Id': 'ext-user' }
+    });
+    const d = await r.json();
+    if (!r.ok) { el.innerHTML = `<span style="color:var(--red)">Erreur : ${d.error}</span>`; return; }
+
+    const pct = d.storage.used_percent;
+    const barClass = pct >= 95 ? 'danger' : pct >= 80 ? 'warn' : '';
+
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:.25rem;">Plan actuel</div>
+          <div style="font-weight:700;font-size:1.1rem;">${d.plan_name} <span style="font-size:.85rem;font-weight:400;color:var(--muted);">${d.price_monthly}</span></div>
+        </div>
+        <div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:.25rem;">Fichiers stockés</div>
+          <div style="font-weight:700;font-size:1.1rem;">${d.files}</div>
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:.4rem;">
+          <span>Stockage utilisé</span>
+          <span style="font-weight:600;">${d.storage.used_label} / ${d.storage.quota_label} — ${pct}%</span>
+        </div>
+        <div class="usage-bar-wrap"><div class="usage-bar ${barClass}" style="width:${Math.min(100,pct)}%"></div></div>
+      </div>
+      ${d.alerts.message ? `<div style="margin-top:.75rem;padding:.6rem 1rem;background:#2a1a0a;border:1px solid ${pct>=95?'var(--red)':'var(--yellow)'};border-radius:8px;font-size:.85rem;color:${pct>=95?'var(--red)':'var(--yellow)'};">⚠️ ${d.alerts.message}</div>` : ''}
+      ${d.upgrade.available ? `
+        <div style="margin-top:.75rem;padding:.75rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.85rem;">
+          🚀 Plan suivant : <strong>${d.upgrade.next_plan}</strong> — ${d.upgrade.next_quota} — ${d.upgrade.next_price}
+          <span style="color:var(--muted);"> · Upgrade : POST /v1/accounts/plan</span>
+        </div>` : ''}
+    `;
+  } catch(e) { el.innerHTML = `<span style="color:var(--red)">Erreur réseau : ${e.message}</span>`; }
+}
+
+// ─── CODE TABS ───────────────────────────────────────────────────────────────
+function setTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.code-block').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[onclick="setTab('${id}')"]`).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function clearResult(id) { const el = document.getElementById(id); el.className='result-area'; el.textContent='En attente…'; }
+
+function copy(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Copié !', 'ok'));
+}
+
+function copyCode(id) {
+  const el = document.getElementById(id);
+  const text = el.innerText.replace(/^Copier\n/, '');
+  navigator.clipboard.writeText(text).then(() => toast('Code copié !', 'ok'));
+}
+
+let _toastTimer;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = type;
+  el.style.display = 'block';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+checkStatus();
+</script>
+</body>
+</html>

@@ -80,30 +80,68 @@ class Settings(BaseSettings):
 
 
 # ── Plans d'abonnement ─────────────────────────────────────────────────────────
+# Chaque plan définit un niveau de service qui s'applique à une application externe.
+# Les limites sont appliquées côté serveur à chaque upload.
 PLANS = {
     "free": {
-        "name": "Gratuit",
-        "price_monthly": 0,
-        "storage_mb": 500,
-        "max_keys": 1,
-        "signed_url_max_ttl": 60,
-        "support": "Community",
+        "name":               "Gratuit",
+        "price_monthly":      0,
+        "storage_mb":         500,           # 500 MB
+        "max_keys":           1,
+        "signed_url_max_ttl": 60,            # 1 minute
+        "support":            "Community",
+        "upload_rate_per_min": 20,
+        "max_file_size_mb":   5,
+        "webhooks":           False,
+        "encryption":         False,         # pas de chiffrement sur le plan gratuit
+        "bulk_upload":        False,
+        "badge":              "Starter",
+        "color":              "#6b7280",
+    },
+    "starter": {
+        "name":               "Starter",
+        "price_monthly":      5,
+        "storage_mb":         2 * 1024,      # 2 GB
+        "max_keys":           2,
+        "signed_url_max_ttl": 120,           # 2 minutes
+        "support":            "Email",
+        "upload_rate_per_min": 40,
+        "max_file_size_mb":   10,
+        "webhooks":           True,
+        "encryption":         True,
+        "bulk_upload":        False,
+        "badge":              "Populaire",
+        "color":              "#3b82f6",
     },
     "pro": {
-        "name": "Pro",
-        "price_monthly": 19,
-        "storage_mb": 50 * 1024,
-        "max_keys": 3,
-        "signed_url_max_ttl": 300,
-        "support": "Email 24h",
+        "name":               "Pro",
+        "price_monthly":      19,
+        "storage_mb":         50 * 1024,     # 50 GB
+        "max_keys":           5,
+        "signed_url_max_ttl": 300,           # 5 minutes
+        "support":            "Email 24h",
+        "upload_rate_per_min": 60,
+        "max_file_size_mb":   25,
+        "webhooks":           True,
+        "encryption":         True,
+        "bulk_upload":        True,
+        "badge":              "Pro",
+        "color":              "#8b5cf6",
     },
     "business": {
-        "name": "Business",
-        "price_monthly": 79,
-        "storage_mb": 500 * 1024,
-        "max_keys": 10,
-        "signed_url_max_ttl": 3600,
-        "support": "Prioritaire + SLA",
+        "name":               "Business",
+        "price_monthly":      79,
+        "storage_mb":         500 * 1024,    # 500 GB
+        "max_keys":           20,
+        "signed_url_max_ttl": 3600,          # 1 heure
+        "support":            "Prioritaire + SLA 99.9%",
+        "upload_rate_per_min": 300,
+        "max_file_size_mb":   100,
+        "webhooks":           True,
+        "encryption":         True,
+        "bulk_upload":        True,
+        "badge":              "Entreprise",
+        "color":              "#f59e0b",
     },
 }
 

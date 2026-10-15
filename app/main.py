@@ -7,7 +7,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -16,8 +16,7 @@ from starlette.exceptions import HTTPException
 
 from app.config import settings
 from app.database import init_db
-from app.routers import accounts, files, health, public
-from app.routers import webhooks
+from app.routers import accounts, files, health, public, webhooks, integration, admin
 from app.schemas import ApiError, ErrorCode
 
 _start_time = time.time()
@@ -176,10 +175,18 @@ else:
         expose_headers=["X-Request-ID", "X-Service-Version", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
     )
 
+# ── Auth admin (master key) ────────────────────────────────────────────────────
+from fastapi import Header, HTTPException as _HTE
+async def _master_key_dep(x_api_key: str = Header(..., alias="X-API-Key")):
+    if x_api_key != settings.api_key:
+        raise _HTE(status_code=403, detail="Admin access requires the master API key")
+
 # ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(files.router)
 app.include_router(accounts.router)
 app.include_router(webhooks.router)
+app.include_router(integration.router)
+app.include_router(admin.router, dependencies=[Depends(_master_key_dep)])
 app.include_router(health.router)
 app.include_router(public.router)
 
@@ -226,6 +233,14 @@ async def test_ui():
     if os.path.exists(test_page):
         return FileResponse(test_page)
     return JSONResponse(status_code=404, content={"error": "test.html not found"})
+
+
+@app.get("/integration", include_in_schema=False)
+async def integration_ui():
+    page = os.path.join(ui_path, "integration.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return JSONResponse(status_code=404, content={"error": "integration.html not found"})
 
 
 @app.get("/v1/ping", tags=["monitoring"], summary="Liveness probe")

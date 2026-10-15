@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
-from app.auth import get_current_client
+from app.auth import get_current_client, get_client_from_api_key
 from app.config import PLANS, get_plan
 from app.database import get_db
 from app.utils.security import (
@@ -39,6 +39,7 @@ class RegisterIn(BaseModel):
     email: str = Field(..., max_length=255)
     password: str = Field(..., min_length=8, max_length=128)
     company_name: Optional[str] = Field(None, max_length=255)
+    plan: Optional[str] = Field("free", description="Plan d'abonnement: free|starter|pro|business")
 
 
 class LoginIn(BaseModel):
@@ -143,12 +144,13 @@ async def register(body: RegisterIn, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="An account with this email already exists")
 
+    plan_id = body.plan if body.plan in PLANS else "free"
     client = models.Client(
         id=str(uuid.uuid4()),
         email=email,
         password_hash=hash_password(body.password),
         company_name=body.company_name,
-        plan="free",
+        plan=plan_id,
     )
     db.add(client)
 
@@ -159,20 +161,22 @@ async def register(body: RegisterIn, db: AsyncSession = Depends(get_db)):
         name="Clé principale",
         api_key=api_key,
         hmac_secret=hmac_secret,
-        plan="free",
+        plan=plan_id,
     )
     db.add(key)
     await db.commit()
 
     token = create_session_token(client.id)
     return {
-        "client_id": client.id,
-        "email": client.email,
-        "plan": client.plan,
-        "api_key": api_key,
+        "client_id":   client.id,
+        "email":       client.email,
+        "plan":        client.plan,
+        "plan_details": get_plan(client.plan),
+        "api_key":     api_key,
         "hmac_secret": hmac_secret,
         "access_token": token,
-        "token_type": "bearer",
+        "token_type":  "bearer",
+        "storage_quota": f"{get_plan(client.plan)['storage_mb']} MB",
         "warning": "Conservez ces credentials en lieu sûr — le secret ne sera plus affiché.",
     }
 
@@ -294,7 +298,7 @@ async def change_plan(
 async def get_stats(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    client: models.Client = Depends(get_current_client),
+    client: models.Client = Depends(get_client_from_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -386,3 +390,87 @@ async def get_stats(
         "plan":             client.plan,
         "plan_details":     get_plan(client.plan),
     }
+
+
+# ── Usage temps réel (quota) ──────────────────────────────────────────────────
+@router.get("/v1/accounts/usage", summary="Quota et usage temps réel")
+async def get_usage(
+    client: models.Client = Depends(get_client_from_api_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retourne l'état du quota en temps réel avec alertes.
+    Idéal pour intégrer une barre de progression dans votre application.
+    """
+    result = await db.execute(
+        select(
+            func.count(models.StoredFile.id),
+            func.coalesce(func.sum(models.StoredFile.size_bytes), 0),
+        ).where(
+            models.StoredFile.client_id == client.id,
+            models.StoredFile.is_deleted == False,
+        )
+    )
+    row = result.one()
+    total_files = row[0]
+    total_bytes = row[1]
+
+    plan = get_plan(client.plan)
+    quota_bytes = plan["storage_mb"] * 1024 * 1024
+    used_pct = round(total_bytes / quota_bytes * 100, 2) if quota_bytes > 0 else 0
+    free_bytes = max(0, quota_bytes - total_bytes)
+
+    # Prochains paliers
+    plan_ids = list(PLANS.keys())
+    current_idx = plan_ids.index(client.plan) if client.plan in plan_ids else 0
+    next_plan = PLANS.get(plan_ids[current_idx + 1]) if current_idx + 1 < len(plan_ids) else None
+
+    return {
+        "plan":            client.plan,
+        "plan_name":       plan["name"],
+        "price_monthly":   f"{plan['price_monthly']}€/mois",
+
+        "storage": {
+            "used_bytes":   total_bytes,
+            "used_label":   _fmt_bytes(total_bytes),
+            "quota_bytes":  quota_bytes,
+            "quota_label":  _fmt_bytes(quota_bytes),
+            "free_bytes":   free_bytes,
+            "free_label":   _fmt_bytes(free_bytes),
+            "used_percent": used_pct,
+        },
+
+        "files":          total_files,
+        "max_file_size":  f"{plan['max_file_size_mb']} MB",
+        "max_api_keys":   plan["max_keys"],
+        "webhooks":       plan["webhooks"],
+        "encryption":     plan["encryption"],
+        "bulk_upload":    plan["bulk_upload"],
+
+        "alerts": {
+            "quota_warning": used_pct >= 80,
+            "quota_critical": used_pct >= 95,
+            "quota_full":    total_bytes >= quota_bytes,
+            "message": (
+                f"Stockage plein — passez au plan {next_plan['name'] if next_plan else 'supérieur'}."
+                if total_bytes >= quota_bytes else
+                f"Attention : {used_pct:.0f}% du quota utilisé."
+                if used_pct >= 80 else None
+            ),
+        },
+
+        "upgrade": {
+            "available": next_plan is not None,
+            "next_plan":   next_plan["name"] if next_plan else None,
+            "next_price":  f"{next_plan['price_monthly']}€/mois" if next_plan else None,
+            "next_quota":  _fmt_bytes(next_plan["storage_mb"] * 1024 * 1024) if next_plan else None,
+            "upgrade_url": "POST /v1/accounts/plan",
+        },
+    }
+
+
+def _fmt_bytes(b: int) -> str:
+    if b >= 1024 ** 3: return f"{b / 1024**3:.2f} GB"
+    if b >= 1024 ** 2: return f"{b / 1024**2:.2f} MB"
+    if b >= 1024:      return f"{b / 1024:.1f} KB"
+    return f"{b} B"

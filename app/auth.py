@@ -207,3 +207,37 @@ async def get_current_client(
             detail="Account not found or disabled",
         )
     return client
+
+
+async def get_client_from_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> models.Client:
+    """
+    Résolution flexible du client :
+    - Depuis l'API key (X-API-Key) — pour les intégrateurs externes
+    - Depuis le JWT Bearer (Authorization) — pour le dashboard
+    """
+    # Essai 1 : JWT Bearer
+    if authorization and authorization.startswith("Bearer "):
+        client_id = decode_session_token(authorization[7:])
+        if client_id:
+            r = await db.execute(select(models.Client).where(models.Client.id == client_id))
+            c = r.scalar_one_or_none()
+            if c and c.is_active:
+                return c
+
+    # Essai 2 : API key directe
+    if x_api_key:
+        _, client_id, _ = await _resolve_api_key(db, x_api_key)
+        if client_id:
+            r = await db.execute(select(models.Client).where(models.Client.id == client_id))
+            c = r.scalar_one_or_none()
+            if c and c.is_active:
+                return c
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required — provide X-API-Key or Authorization: Bearer <token>",
+    )
