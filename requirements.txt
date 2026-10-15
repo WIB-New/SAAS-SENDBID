@@ -25,3 +25,8 @@ structlog==24.1.0
 prometheus-client==0.20.0
 schedule==1.2.1
 click==8.1.7
+# Nouvelles dépendances v2
+slowapi==0.1.9
+apscheduler==3.9.1
+boto3==1.34.0
+aiosqlite==0.20.0

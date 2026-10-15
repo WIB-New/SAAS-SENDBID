@@ -287,3 +287,102 @@ async def change_plan(
     client.plan = body.plan
     await db.commit()
     return {"plan": client.plan, "plan_details": get_plan(client.plan)}
+
+
+# ── Stats analytiques ──────────────────────────────────────────────────────────
+@router.get("/v1/accounts/stats", summary="Statistiques d'usage analytiques")
+async def get_stats(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    client: models.Client = Depends(get_current_client),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retourne des statistiques détaillées : total fichiers, taille, uploads par jour,
+    répartition par catégorie, fichiers chiffrés, thumbnails générés.
+    """
+    from sqlalchemy import cast, Date, and_
+    from datetime import date
+
+    base_q = select(models.StoredFile).where(
+        models.StoredFile.client_id == client.id,
+    )
+
+    # Fichiers actifs
+    active_result = await db.execute(
+        select(
+            models.StoredFile.category,
+            func.count(models.StoredFile.id),
+            func.coalesce(func.sum(models.StoredFile.size_bytes), 0),
+        )
+        .where(
+            models.StoredFile.client_id == client.id,
+            models.StoredFile.is_deleted == False,
+        )
+        .group_by(models.StoredFile.category)
+    )
+    rows = active_result.all()
+    by_category = {
+        r[0]: {"count": r[1], "size_bytes": r[2]}
+        for r in rows
+    }
+    total_active = sum(r[1] for r in rows)
+    total_size = sum(r[2] for r in rows)
+
+    # Fichiers supprimés
+    del_result = await db.execute(
+        select(func.count(models.StoredFile.id)).where(
+            models.StoredFile.client_id == client.id,
+            models.StoredFile.is_deleted == True,
+        )
+    )
+    total_deleted = del_result.scalar() or 0
+
+    # Fichiers chiffrés
+    enc_result = await db.execute(
+        select(func.count(models.StoredFile.id)).where(
+            models.StoredFile.client_id == client.id,
+            models.StoredFile.is_encrypted == True,
+            models.StoredFile.is_deleted == False,
+        )
+    )
+    encrypted_count = enc_result.scalar() or 0
+
+    # Thumbnails générés
+    thumb_result = await db.execute(
+        select(func.count(models.StoredFile.id)).where(
+            models.StoredFile.client_id == client.id,
+            models.StoredFile.thumbnail_path.isnot(None),
+            models.StoredFile.is_deleted == False,
+        )
+    )
+    thumb_count = thumb_result.scalar() or 0
+
+    # Uploads par jour (30 derniers jours)
+    from sqlalchemy import text as sa_text
+    daily_result = await db.execute(
+        sa_text(
+            "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(size_bytes),0) as sz "
+            "FROM stored_files "
+            "WHERE client_id = :cid AND is_deleted = 0 "
+            "GROUP BY day ORDER BY day DESC LIMIT 30"
+        ),
+        {"cid": client.id},
+    )
+    uploads_by_day = [
+        {"date": str(r[0]), "count": r[1], "size_bytes": r[2]}
+        for r in daily_result.all()
+    ]
+
+    return {
+        "total_files":      total_active + total_deleted,
+        "active_files":     total_active,
+        "deleted_files":    total_deleted,
+        "total_size_bytes": total_size,
+        "by_category":      by_category,
+        "uploads_by_day":   uploads_by_day,
+        "encrypted_files":  encrypted_count,
+        "thumbnail_count":  thumb_count,
+        "plan":             client.plan,
+        "plan_details":     get_plan(client.plan),
+    }

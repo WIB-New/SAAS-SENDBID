@@ -7,7 +7,6 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-# Support both SQLite (dev) and PostgreSQL (prod)
 db_url = settings.database_url
 if db_url.startswith("sqlite"):
     engine = create_async_engine(
@@ -40,22 +39,34 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables on startup + apply lightweight column migrations."""
+    """Crée toutes les tables + migrations légères sur les colonnes existantes."""
     async with engine.begin() as conn:
-        from app import models  # noqa: F401 — triggers model registration
+        from app import models  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
 
-        # create_all never alters existing tables — add missing columns
         def _migrate(sync_conn):
             insp = inspect(sync_conn)
-            cols = {c["name"] for c in insp.get_columns("stored_files")}
-            if "client_id" not in cols:
+            tables = insp.get_table_names()
+
+            # ── stored_files ──────────────────────────────
+            if "stored_files" in tables:
+                sf_cols = {c["name"] for c in insp.get_columns("stored_files")}
+                migrations = {
+                    "client_id":      "VARCHAR(36)",
+                    "tags":           "TEXT",
+                    "thumbnail_path": "VARCHAR(1024)",
+                    "is_encrypted":   "BOOLEAN DEFAULT 0",
+                    "parent_id":      "VARCHAR(36)",
+                    "version":        "INTEGER DEFAULT 1",
+                }
+                for col, typedef in migrations.items():
+                    if col not in sf_cols:
+                        sync_conn.execute(
+                            text(f"ALTER TABLE stored_files ADD COLUMN {col} {typedef}")
+                        )
                 sync_conn.execute(
-                    text("ALTER TABLE stored_files ADD COLUMN client_id VARCHAR(36)")
+                    text("CREATE INDEX IF NOT EXISTS ix_stored_files_client_id "
+                         "ON stored_files (client_id)")
                 )
-            sync_conn.execute(
-                text("CREATE INDEX IF NOT EXISTS ix_stored_files_client_id "
-                     "ON stored_files (client_id)")
-            )
 
         await conn.run_sync(_migrate)
