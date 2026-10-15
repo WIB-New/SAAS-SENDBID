@@ -25,6 +25,13 @@ _start_time = time.time()
 # ── Exception handlers ─────────────────────────────────────────────────────────
 def _error_code(exc: HTTPException) -> str:
     d = str(exc.detail or "")
+    # Codes explicites passés directement comme detail
+    explicit = {"MASTER_KEY_NO_CLIENT", "INVALID_CLIENT_KEY", "MISSING_API_KEY",
+                "INVALID_API_KEY", "FORBIDDEN", "ACCESS_DENIED", "QUOTA_EXCEEDED",
+                "MALWARE_DETECTED", "DANGEROUS_FILE", "INVALID_CATEGORY",
+                "INVALID_MIME", "SIGNED_URL_INVALID", "FILE_NOT_FOUND",
+                "FILE_TOO_LARGE", "RATE_LIMIT_EXCEEDED"}
+    if d in explicit:                                               return d
     if "Missing" in d and "API" in d:                               return "MISSING_API_KEY"
     if "Invalid API key" in d:                                      return "INVALID_API_KEY"
     if "HMAC" in d:                                                 return "INVALID_HMAC"

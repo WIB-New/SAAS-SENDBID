@@ -923,7 +923,7 @@ async function doTestConnect() {
     });
     const d = await r.json();
     if (r.ok) {
-      const q = d.quota || {};
+      const q = d.quota || d.storage || {};
       el.className = 'result-area ok';
       el.textContent = [
         '✅  CONNEXION RÉUSSIE',
@@ -942,11 +942,28 @@ async function doTestConnect() {
       ].join('\n');
     } else {
       el.className = 'result-area err';
-      el.textContent = `❌  ÉCHEC [${r.status}]\n\n   ${d.error || JSON.stringify(d)}`;
+      const code = d.code || d.detail || '';
+      if (code === 'MASTER_KEY_NO_CLIENT') {
+        el.textContent = [
+          'INFO : Cle admin detectee',
+          '',
+          '   La cle "dev-api-key-sendbid-2024" est la cle master.',
+          '   Elle donne acces aux endpoints /v1/admin/* mais',
+          '   n\'est liee a aucun compte client.',
+          '',
+          '   Creez un compte (section ci-dessous) pour obtenir',
+          '   une cle client au format  shk_...',
+        ].join('\n');
+        el.className = 'result-area';
+        el.style.color = 'var(--ind)';
+      } else {
+        el.textContent = `Echec [${r.status}] ${code}\n\n   ${d.error || JSON.stringify(d)}`;
+        el.style.color = '';
+      }
     }
   } catch(e) {
     el.className = 'result-area err';
-    el.textContent = '❌  Erreur réseau : ' + e.message;
+    el.textContent = 'Erreur reseau : ' + e.message;
   }
 }
 
@@ -1018,7 +1035,41 @@ async function doQuota() {
       headers:{ 'X-API-Key':key, 'X-User-Id':'ext-user' }
     });
     const d = await r.json();
-    if (!r.ok) { el.innerHTML=`<div style="color:var(--red);font-size:.88rem;padding:10px">Erreur : ${d.error||d.detail}</div>`; return; }
+    if (!r.ok) {
+      const code = d.code || d.detail || d.error || '';
+      if (code === 'MASTER_KEY_NO_CLIENT') {
+        el.innerHTML = `
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start">
+            <div style="font-size:1.3rem;flex-shrink:0">🔑</div>
+            <div>
+              <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">Clé admin — aucun quota associé</div>
+              <div style="font-size:.85rem;color:#3b82f6;line-height:1.6">
+                La clé <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">dev-api-key-sendbid-2024</code> est la <strong>clé master administrateur</strong>.<br>
+                Elle donne accès aux endpoints <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">/v1/admin/*</code> mais n'est liée à aucun compte client.<br><br>
+                Pour voir un quota, utilisez la <strong>clé API d'un compte client</strong> — format&nbsp;:
+                <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">shk_…</code>
+              </div>
+              <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+                <button onclick="document.getElementById('register').scrollIntoView({behavior:'scroll',block:'center'})" style="padding:8px 16px;border-radius:8px;background:#3b82f6;color:#fff;border:0;font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+                  → Créer un compte client
+                </button>
+                <button onclick="document.getElementById('quota-key').value='';document.getElementById('quota-key').focus()" style="padding:8px 16px;border-radius:8px;background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe;font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+                  Entrer ma clé client
+                </button>
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
+      if (code === 'INVALID_CLIENT_KEY') {
+        el.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;color:var(--red);font-size:.87rem">
+          ❌ <strong>Clé API invalide ou révoquée.</strong><br>
+          <span style="color:var(--mut);font-size:.83rem">Vérifiez que la clé est bien au format <code>shk_…</code> et qu'elle n'a pas été révoquée.</span>
+        </div>`;
+        return;
+      }
+      el.innerHTML=`<div style="color:var(--red);font-size:.88rem;padding:10px">Erreur : ${d.error||d.detail}</div>`; return;
+    }
     const pct = d.storage?.used_percent || 0;
     const barClass = pct >= 95 ? 'danger' : pct >= 80 ? 'warn' : '';
     el.innerHTML = `

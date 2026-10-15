@@ -230,14 +230,24 @@ async def get_client_from_api_key(
 
     # Essai 2 : API key directe
     if x_api_key:
+        # Clé master → pas de client associé, erreur explicite
+        if hmac.compare_digest(x_api_key, settings.api_key):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MASTER_KEY_NO_CLIENT",
+            )
         _, client_id, _ = await _resolve_api_key(db, x_api_key)
         if client_id:
             r = await db.execute(select(models.Client).where(models.Client.id == client_id))
             c = r.scalar_one_or_none()
             if c and c.is_active:
                 return c
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="INVALID_CLIENT_KEY",
+        )
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required — provide X-API-Key or Authorization: Bearer <token>",
+        detail="MISSING_API_KEY",
     )
