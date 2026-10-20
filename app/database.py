@@ -55,7 +55,7 @@ async def init_db():
                     "client_id":      "VARCHAR(36)",
                     "tags":           "TEXT",
                     "thumbnail_path": "VARCHAR(1024)",
-                    "is_encrypted":   "BOOLEAN DEFAULT 0",
+                    "is_encrypted":   "BOOLEAN DEFAULT false",
                     "parent_id":      "VARCHAR(36)",
                     "version":        "INTEGER DEFAULT 1",
                 }
