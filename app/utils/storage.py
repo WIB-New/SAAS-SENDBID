@@ -9,7 +9,7 @@ import hmac
 import os
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
@@ -71,7 +71,7 @@ def generate_signed_url(file_id: str, ttl_seconds: Optional[int] = None) -> tupl
     Returns (signed_url, expires_at).
     """
     ttl = ttl_seconds or settings.signed_url_ttl
-    expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
     expires_ts = int(expires_at.timestamp())
 
     # Sign: HMAC(secret, file_id + ":" + expires_ts)

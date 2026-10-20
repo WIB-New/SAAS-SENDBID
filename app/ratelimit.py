@@ -38,20 +38,26 @@ def _get_ip(request: Request) -> str:
 
 # ── Dépendances prêtes à l'emploi ──────────────────────────────────────────────
 class RateLimit:
-    """Usage : Depends(RateLimit(max_calls=60, period=60))"""
-    def __init__(self, max_calls: int = 300, period: int = 60):
+    """
+    Usage : Depends(RateLimit("upload", max_calls=60, period=60))
+    Chaque limiteur nommé possède son propre compteur. L'identité est la clé API
+    (isolation multi-tenant) avec repli sur l'IP si absente.
+    """
+    def __init__(self, name: str = "default", max_calls: int = 300, period: int = 60):
+        self.name = name
         self.max_calls = max_calls
         self.period = period
 
     async def __call__(self, request: Request):
-        _store.check(_get_ip(request), self.max_calls, self.period)
+        identity = request.headers.get("x-api-key") or _get_ip(request)
+        _store.check(f"{self.name}:{identity}", self.max_calls, self.period)
 
 
 # Limites prédéfinies
-upload_limit  = RateLimit(max_calls=60,  period=60)   # 60 uploads/minute
-bulk_limit    = RateLimit(max_calls=10,  period=60)   # 10 bulk/minute
-url_limit     = RateLimit(max_calls=20,  period=60)   # 20 from-url/minute
-global_limit  = RateLimit(max_calls=300, period=60)   # 300 req/minute global
+upload_limit  = RateLimit("upload",  max_calls=60,  period=60)   # 60 uploads/minute
+bulk_limit    = RateLimit("bulk",    max_calls=10,  period=60)   # 10 bulk/minute
+url_limit     = RateLimit("url",     max_calls=20,  period=60)   # 20 from-url/minute
+global_limit  = RateLimit("global",  max_calls=300, period=60)   # 300 req/minute global
 
 # Pour compatibilité avec main.py (slowapi n'est plus nécessaire mais gardé pour l'exception handler)
 class _FakeLimiter:

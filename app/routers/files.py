@@ -27,6 +27,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
+import asyncio
 from app.auth import AuthContext, get_auth_context
 from app.config import get_plan, settings
 from app.database import get_db
@@ -285,8 +286,7 @@ async def upload_bulk(
 
 
 # ──────────────────────────────────────────────
-#  POST /v1/files/from-url — Import depuis URL
-# ──────────────────────────────────────────────
+#  POST /v1/files/from-url — Import depuis URL# ──────────────────────────────────────────────
 @router.post("/from-url", response_model=schemas.FileUploadResponse, status_code=201,
              summary="Importer un fichier depuis une URL distante")
 async def upload_from_url(
@@ -303,7 +303,8 @@ async def upload_from_url(
         raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
 
     max_bytes = settings.max_sizes_bytes[category]
-    try:
+
+    async def _download() -> bytes:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client_http:
             async with client_http.stream("GET", url) as resp:
                 resp.raise_for_status()
@@ -317,7 +318,12 @@ async def upload_from_url(
                             detail=f"Remote file too large (max {max_bytes // 1024 // 1024} MB)"
                         )
                     chunks.append(chunk)
-                content = b"".join(chunks)
+                return b"".join(chunks)
+
+    try:
+        content = await asyncio.wait_for(_download(), timeout=20.0)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Remote file download took too long")
     except HTTPException:
         raise
     except Exception as exc:

@@ -44,12 +44,18 @@ class AuthContext:
 
     def can_access_file(self, file_owner_id: str, file_client_id: Optional[str] = None) -> bool:
         """Check if this caller may access a file."""
-        if self.user_id == file_owner_id or self.is_admin:
+        if self.is_admin:
             return True
-        # A client key can access files uploaded through that same client
-        if self.client_id and file_client_id and self.client_id == file_client_id:
-            return True
-        return False
+        if self.client_id or file_client_id:
+            # Tenant isolation first: a client key may only touch files of its
+            # own tenant — X-User-Id is client-controlled and must not grant
+            # cross-tenant access.
+            return bool(
+                self.client_id and file_client_id
+                and self.client_id == file_client_id
+            )
+        # Master-key files (client_id=None): owner match only
+        return self.user_id == file_owner_id
 
 
 def _verify_hmac_signature(

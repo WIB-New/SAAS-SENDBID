@@ -171,7 +171,7 @@ async def test_list_files_only_shows_own(client):
     # user-001 lists files
     resp = await client.get("/v1/files", headers=TEST_HEADERS)
     assert resp.status_code == 200
-    files = resp.json()
+    files = resp.json()["items"]
     for f in files:
         assert f["owner_user_id"] == "user-001", f"Saw file from wrong owner: {f}"
 
@@ -184,6 +184,6 @@ async def test_admin_sees_all_files(client):
 
     resp = await client.get("/v1/files", headers=ADMIN_HEADERS)
     assert resp.status_code == 200
-    files = resp.json()
+    files = resp.json()["items"]
     owner_ids = {f["owner_user_id"] for f in files}
     assert len(owner_ids) >= 2, "Admin should see files from multiple owners"

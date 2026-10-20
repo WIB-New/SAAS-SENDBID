@@ -273,7 +273,7 @@ button{font-family:inherit;cursor:pointer}
     <a class="sb-item" href="/ui/docs.html">
       <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
       Documentation</a>
-    <div class="sb-foot">StorageHub v1.0.0<br><span id="sb-email"></span></div>
+    <div class="sb-foot">StorageHub v2.0.0<br><span id="sb-email"></span></div>
   </aside>
 
   <main class="main">
@@ -390,7 +390,11 @@ async function api(path, opts={}){
   if(TOKEN()) opts.headers['Authorization'] = 'Bearer '+TOKEN();
   const r = await fetch(API+path, opts);
   const d = await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
+  if(!r.ok){
+    const err = new Error(d.detail||d.error||('HTTP '+r.status));
+    err.status = r.status;
+    throw err;
+  }
   return d;
 }
 
@@ -452,7 +456,12 @@ function showSec(sec, el){
 }
 
 async function loadMe(){
-  try{ ME = await api('/v1/accounts/me'); }catch(e){ logout(); return; }
+  try{ ME = await api('/v1/accounts/me'); }
+  catch(e){
+    if(e.status===401||e.status===403){ logout(); }
+    else{ toast('Erreur de chargement — '+e.message, false); }
+    return;
+  }
   $('whoEmail').textContent = ME.email + (ME.company_name ? ' · '+ME.company_name : '');
   $('sb-email').textContent = ME.email;
   $('planChip').textContent = ME.plan_details.name;
@@ -468,9 +477,13 @@ async function loadMe(){
     $('c-'+c).innerHTML = cat ? cat.files+' <small>· '+fmtBytes(cat.bytes)+'</small>' : '0';
   });
   renderKeys(ME.api_keys||[]);
+  const firstKey = (ME.api_keys||[]).find(k=>!k.revoked);
+  const keyVal = firstKey && !firstKey.api_key.includes('…')
+    ? firstKey.api_key
+    : 'shk_… (masquée — créez-en une dans "Clés API")';
   $('qsEnv').textContent =
 `STORAGE_BASE_URL=${location.origin}
-STORAGE_API_KEY=${(ME.api_keys&&ME.api_keys[0])?ME.api_keys[0].api_key:'shk_…'}
+STORAGE_API_KEY=${keyVal}
 STORAGE_HMAC_SECRET=<affiché à la création de la clé>`;
 }
 
@@ -506,9 +519,10 @@ async function revokeKey(id){
 async function loadPlans(){
   try{
     const plans = await api('/v1/plans');
+    const curPlan = ME ? ME.plan : null;
     $('plansGrid').innerHTML = Object.entries(plans).map(([id,p])=>`
-      <div class="pcard ${ME.plan===id?'cur':''}">
-        ${ME.plan===id?'<span class="cur-tag">ACTUEL</span>':''}
+      <div class="pcard ${curPlan===id?'cur':''}">
+        ${curPlan===id?'<span class="cur-tag">ACTUEL</span>':''}
         <div class="pn">${p.name}</div>
         <div class="pp">${p.price_monthly_eur}€<small>/mois</small></div>
         <ul>
@@ -517,15 +531,15 @@ async function loadPlans(){
           <li>URLs signées ${p.signed_url_max_ttl>=60?(p.signed_url_max_ttl/60)+' min':p.signed_url_max_ttl+' s'} max</li>
           <li>Support : ${p.support}</li>
         </ul>
-        ${ME.plan===id?'':'<button class="mini primary" style="width:100%" onclick="setPlan(\''+id+'\')">Choisir '+p.name+'</button>'}
+        ${curPlan===id?'':'<button class="mini primary" style="width:100%" onclick="setPlan(\''+id+'\')">Choisir '+p.name+'</button>'}
       </div>`).join('');
   }catch(e){ toast(e.message,false); }
 }
 async function setPlan(id){
   try{
     await api('/v1/accounts/plan',{method:'POST',body:JSON.stringify({plan:id})});
-    toast('Plan mis à jour ✓'); loadMe(); loadPlans();
-    $('planChip').textContent = id;
+    toast('Plan mis à jour ✓');
+    await loadMe(); loadPlans();
   }catch(e){ toast(e.message,false); }
 }
 
@@ -534,7 +548,7 @@ async function boot(){
   if(!TOKEN()){ $('authView').classList.remove('hidden'); return; }
   $('authView').classList.add('hidden');
   $('dashView').classList.remove('hidden');
-  loadMe(); loadPlans();
+  await loadMe(); loadPlans();
 }
 boot();
 </script>
