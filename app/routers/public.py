@@ -37,21 +37,31 @@ async def serve_public_avatar(file_id: str, db: AsyncSession = Depends(get_db)):
     if not stored_file:
         raise HTTPException(status_code=404, detail="Avatar not found")
 
-    abs_path = settings.upload_path / stored_file.stored_path
-    # Sécurité : le chemin doit rester strictement dans le dossier avatars
-    avatars_root = settings.upload_path / "avatars"
-    try:
-        abs_path.resolve().relative_to(avatars_root.resolve())
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from app.utils.backends import get_storage_backend, LocalBackend
+    backend = get_storage_backend()
 
-    if not abs_path.exists():
-        raise HTTPException(status_code=404, detail="Avatar not found on disk")
+    if isinstance(backend, LocalBackend):
+        abs_path = settings.upload_path / stored_file.stored_path
+        # Sécurité : le chemin doit rester strictement dans le dossier avatars
+        avatars_root = settings.upload_path / "avatars"
+        try:
+            abs_path.resolve().relative_to(avatars_root.resolve())
+        except ValueError:
+            raise HTTPException(status_code=403, detail="Access denied")
 
-    async def file_iterator():
-        async with aiofiles.open(abs_path, "rb") as f:
-            while chunk := await f.read(65536):
-                yield chunk
+        if not abs_path.exists():
+            raise HTTPException(status_code=404, detail="Avatar not found on disk")
+
+        async def file_iterator():
+            async with aiofiles.open(abs_path, "rb") as f:
+                while chunk := await f.read(65536):
+                    yield chunk
+    else:
+        if not backend.exists(stored_file.stored_path):
+            raise HTTPException(status_code=404, detail="Avatar not found in storage")
+
+        async def file_iterator():
+            yield await backend.read(stored_file.stored_path)
 
     return StreamingResponse(
         file_iterator(),

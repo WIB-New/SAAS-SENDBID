@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     # Sécurité optionnelle
     virustotal_api_key: str = ""   # Laissez vide pour désactiver
 
+    # Rate limiting distribué (optionnel — sinon compteurs en mémoire)
+    redis_url: str = ""            # ex: redis://localhost:6379/0
+
+    # Rétention des journaux d'audit (jours)
+    audit_retention_days: int = 365
+
+    # Billing Stripe (optionnel — inactif si non configuré)
+    stripe_secret_key:     str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_starter:  str = ""
+    stripe_price_pro:      str = ""
+    stripe_price_business: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

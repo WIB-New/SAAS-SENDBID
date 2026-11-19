@@ -45,7 +45,7 @@ from app.utils.storage import (
     delete_file_from_disk,
 )
 from app.utils.thumbnails import generate_thumbnail, save_thumbnail, get_thumbnail_url
-from app.utils.url_safety import validate_remote_url
+from app.utils.url_safety import resolve_pinned_url
 from app.utils.virus_scanner import scan_content, scan_with_virustotal
 
 router = APIRouter(prefix="/v1/files", tags=["files"])
@@ -327,13 +327,17 @@ async def upload_from_url(
     max_bytes = settings.max_sizes_bytes[category]
 
     async def _download() -> bytes:
-        # Redirections suivies manuellement : chaque hop est re-validé
-        # contre le SSRF (une 302 peut rebasculer vers une IP privée).
+        # Redirections suivies manuellement : chaque hop est re-validé et
+        # épinglé sur l'IP résolue (anti DNS-rebinding) — une 302 peut
+        # rebasculer vers une IP privée.
         current = url
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=False) as client_http:
             for _ in range(4):
-                await validate_remote_url(current)
-                async with client_http.stream("GET", current) as resp:
+                pinned = await resolve_pinned_url(current)
+                req_kwargs: dict = {"headers": pinned["headers"]}
+                if pinned["sni_hostname"]:
+                    req_kwargs["extensions"] = {"sni_hostname": pinned["sni_hostname"]}
+                async with client_http.stream("GET", pinned["url"], **req_kwargs) as resp:
                     if resp.status_code in (301, 302, 303, 307, 308):
                         location = resp.headers.get("location")
                         if not location:
@@ -511,12 +515,12 @@ async def get_thumbnail(
     if not stored_file.thumbnail_path:
         raise HTTPException(status_code=404, detail="No thumbnail available for this file")
 
-    abs_path = settings.upload_path / stored_file.thumbnail_path
-    if not abs_path.exists():
-        raise HTTPException(status_code=404, detail="Thumbnail not found on disk")
+    from app.utils.backends import get_storage_backend
+    backend = get_storage_backend()
+    if not backend.exists(stored_file.thumbnail_path):
+        raise HTTPException(status_code=404, detail="Thumbnail not found in storage")
 
-    async with aiofiles.open(abs_path, "rb") as f:
-        data = await f.read()
+    data = await backend.read(stored_file.thumbnail_path)
 
     # Miniatures des fichiers sensibles : chiffrées au repos → déchiffrer à la volée
     if stored_file.is_encrypted and looks_encrypted(data):
@@ -713,8 +717,20 @@ async def delete_file(
     stored_file = await _get_file_or_404(db, file_id)
     _check_access(auth, stored_file)
 
-    stored_file.is_deleted = True
-    stored_file.deleted_at = datetime.utcnow()
+    # Supprimer un fichier supprime toute sa chaîne de versions —
+    # sinon les anciennes versions resteraient orphelines en base.
+    root_id = stored_file.parent_id or stored_file.id
+    chain = await db.execute(
+        select(models.StoredFile).where(
+            (models.StoredFile.id == root_id)
+            | (models.StoredFile.parent_id == root_id),
+            models.StoredFile.is_deleted == False,
+        )
+    )
+    now = datetime.utcnow()
+    for f in chain.scalars().all():
+        f.is_deleted = True
+        f.deleted_at = now
     await db.commit()
 
     await log_access(
@@ -771,15 +787,15 @@ async def _check_quota(db: AsyncSession, auth: AuthContext, new_bytes: int):
 
 
 async def _stream_response(stored_file: models.StoredFile) -> StreamingResponse:
-    abs_path = settings.upload_path / stored_file.stored_path
+    from app.utils.backends import get_storage_backend, LocalBackend
+    backend = get_storage_backend()
 
-    if not abs_path.exists():
-        raise HTTPException(status_code=404, detail="File data not found on disk")
+    if not backend.exists(stored_file.stored_path):
+        raise HTTPException(status_code=404, detail="File data not found in storage")
 
     # Chiffrement : lire + déchiffrer avant de streamer
     if stored_file.is_encrypted:
-        async with aiofiles.open(abs_path, "rb") as f:
-            encrypted = await f.read()
+        encrypted = await backend.read(stored_file.stored_path)
         data = decrypt_bytes(encrypted, stored_file.category, tenant=stored_file.client_id)
 
         headers = {
@@ -791,11 +807,19 @@ async def _stream_response(stored_file: models.StoredFile) -> StreamingResponse:
         }
         return StreamingResponse(iter([data]), media_type=stored_file.mime_type, headers=headers)
 
-    # Fichier non chiffré : streaming par chunks
-    async def file_iterator():
-        async with aiofiles.open(abs_path, "rb") as f:
-            while chunk := await f.read(65536):
-                yield chunk
+    # Non chiffré : streaming par chunks (local) ou lecture unique (S3)
+    if isinstance(backend, LocalBackend):
+        abs_path = settings.upload_path / stored_file.stored_path
+
+        async def file_iterator():
+            async with aiofiles.open(abs_path, "rb") as f:
+                while chunk := await f.read(65536):
+                    yield chunk
+        content_stream = file_iterator()
+    else:
+        async def remote_iterator():
+            yield await backend.read(stored_file.stored_path)
+        content_stream = remote_iterator()
 
     headers = {
         "Content-Disposition": f'inline; filename="{stored_file.original_filename or stored_file.id}"',
@@ -811,4 +835,4 @@ async def _stream_response(stored_file: models.StoredFile) -> StreamingResponse:
     else:
         headers["Cache-Control"] = "public, max-age=31536000, immutable"
 
-    return StreamingResponse(file_iterator(), media_type=stored_file.mime_type, headers=headers)
+    return StreamingResponse(content_stream, media_type=stored_file.mime_type, headers=headers)

@@ -89,8 +89,15 @@ class StoredFile(Base):
 
     # Relations
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="file", lazy="select")
-    versions:   Mapped[list["StoredFile"]] = relationship(
-        "StoredFile", foreign_keys=[parent_id], lazy="select"
+    # Auto-référence : parent (many→one) / versions (one→many).
+    # remote_side explicite lève l'ambiguïté de direction sur la self-FK.
+    parent:   Mapped["StoredFile|None"]   = relationship(
+        "StoredFile", remote_side=[id], back_populates="versions",
+        foreign_keys=[parent_id], lazy="select",
+    )
+    versions: Mapped[list["StoredFile"]] = relationship(
+        "StoredFile", back_populates="parent",
+        foreign_keys=[parent_id], lazy="select",
     )
 
     def is_public(self) -> bool:
@@ -156,6 +163,7 @@ class WebhookDelivery(Base):
     event:           Mapped[str]       = mapped_column(String(50), nullable=False)
     payload:         Mapped[str|None]  = mapped_column(Text,       nullable=True)
     response_status: Mapped[int|None]  = mapped_column(Integer,    nullable=True)
+    attempts:        Mapped[int]       = mapped_column(Integer,    default=1, nullable=False)
     success:         Mapped[bool]      = mapped_column(Boolean,    default=False, nullable=False)
     error:           Mapped[str|None]  = mapped_column(String(512),nullable=True)
     attempted_at:    Mapped[datetime]  = mapped_column(DateTime,   server_default=func.now(), nullable=False)

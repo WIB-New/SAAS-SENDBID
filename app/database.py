@@ -70,4 +70,12 @@ async def init_db():
                          "ON stored_files (client_id)")
                 )
 
+            # ── webhook_deliveries ────────────────────────
+            if "webhook_deliveries" in tables:
+                wd_cols = {c["name"] for c in insp.get_columns("webhook_deliveries")}
+                if "attempts" not in wd_cols:
+                    sync_conn.execute(
+                        text("ALTER TABLE webhook_deliveries ADD COLUMN attempts INTEGER DEFAULT 1")
+                    )
+
         await conn.run_sync(_migrate)

@@ -31,6 +31,11 @@ class StorageBackend(ABC):
         ...
 
     @abstractmethod
+    def exists(self, relative_path: str) -> bool:
+        """Indique si l'objet existe dans le stockage."""
+        ...
+
+    @abstractmethod
     def delete(self, relative_path: str) -> bool:
         """Supprime le fichier. Retourne True si supprimé."""
         ...
@@ -61,6 +66,9 @@ class LocalBackend(StorageBackend):
         abs_path = self.upload_root / relative_path
         async with aiofiles.open(abs_path, "rb") as f:
             return await f.read()
+
+    def exists(self, relative_path: str) -> bool:
+        return (self.upload_root / relative_path).exists()
 
     def delete(self, relative_path: str) -> bool:
         abs_path = self.upload_root / relative_path
@@ -119,6 +127,13 @@ class S3Backend(StorageBackend):
             lambda: self._client.get_object(Bucket=self.bucket, Key=relative_path),
         )
         return resp["Body"].read()
+
+    def exists(self, relative_path: str) -> bool:
+        try:
+            self._client.head_object(Bucket=self.bucket, Key=relative_path)
+            return True
+        except Exception:
+            return False
 
     def delete(self, relative_path: str) -> bool:
         try:
