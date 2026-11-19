@@ -19,6 +19,19 @@ SESSION_TTL_DAYS = 7
 JWT_ALGORITHM = "HS256"
 
 
+def derive_secret(purpose: str) -> str:
+    """
+    Séparation des domaines cryptographiques : le HMAC_SECRET maître dérive
+    un secret distinct par usage (JWT dashboard, URLs signées). Une fuite
+    d'un domaine ne permet pas de forger les artefacts des autres.
+    """
+    return hmac.new(
+        settings.hmac_secret.encode(),
+        f"storagehub:{purpose}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+
 def hash_password(password: str) -> str:
     """Return 'salt$hash' — both hex-encoded."""
     salt = secrets.token_hex(16)
@@ -51,13 +64,13 @@ def create_session_token(client_id: str) -> str:
         "exp": datetime.utcnow() + timedelta(days=SESSION_TTL_DAYS),
         "iat": datetime.utcnow(),
     }
-    return jwt.encode(payload, settings.hmac_secret, algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, derive_secret("dashboard-jwt"), algorithm=JWT_ALGORITHM)
 
 
 def decode_session_token(token: str) -> Optional[str]:
     """Return client_id or None."""
     try:
-        payload = jwt.decode(token, settings.hmac_secret, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, derive_secret("dashboard-jwt"), algorithms=[JWT_ALGORITHM])
     except JWTError:
         return None
     if payload.get("type") != "dashboard":

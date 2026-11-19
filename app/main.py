@@ -109,8 +109,17 @@ async def lifespan(app: FastAPI):
     await init_db()
 
     # Démarrer le planificateur de tâches (purge quotidienne)
-    from app.tasks.purge import start_scheduler
+    from app.tasks.purge import start_scheduler, purge_legacy_plaintext_thumbnails
     _scheduler = start_scheduler()
+
+    # Nettoyage unique : miniatures de fichiers sensibles laissées en clair
+    # par les anciennes versions du service.
+    try:
+        cleaned = await purge_legacy_plaintext_thumbnails()
+        if cleaned:
+            print(f"[STORAGEHUB] Removed {cleaned} legacy plaintext thumbnails")
+    except Exception as e:
+        print(f"[STORAGEHUB] Thumbnail cleanup skipped: {e}")
 
     print(f"[STORAGEHUB] v2.0 started — env={settings.app_env} | backend={settings.storage_backend}")
     print(f"[STORAGEHUB] Upload root: {settings.upload_path.resolve()}")

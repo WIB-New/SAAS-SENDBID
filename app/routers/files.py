@@ -18,6 +18,7 @@ import json
 import uuid
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urljoin
 
 import aiofiles
 import httpx
@@ -33,7 +34,7 @@ from app.config import get_plan, settings
 from app.database import get_db
 from app.ratelimit import upload_limit, bulk_limit, url_limit
 from app.utils.audit import log_access
-from app.utils.encryption import decrypt_bytes, encrypt_bytes, should_encrypt
+from app.utils.encryption import decrypt_bytes, encrypt_bytes, should_encrypt, looks_encrypted
 from app.utils.file_validation import validate_upload, prevent_path_traversal, validate_category
 from app.utils.image_processing import strip_exif_and_reencode
 from app.utils.storage import (
@@ -44,6 +45,7 @@ from app.utils.storage import (
     delete_file_from_disk,
 )
 from app.utils.thumbnails import generate_thumbnail, save_thumbnail, get_thumbnail_url
+from app.utils.url_safety import validate_remote_url
 from app.utils.virus_scanner import scan_content, scan_with_virustotal
 
 router = APIRouter(prefix="/v1/files", tags=["files"])
@@ -125,19 +127,20 @@ async def _do_upload(
     # 3. Génération du thumbnail (avant chiffrement)
     thumb_bytes = generate_thumbnail(content, mime_type)
 
-    # 4. Chiffrement KYC / reçus
-    encrypted_content = encrypt_bytes(content, category)
+    # 4. Chiffrement KYC / reçus (AES-256-GCM, clé dérivée par tenant)
     is_enc = should_encrypt(category)
+    encrypted_content = encrypt_bytes(content, category, tenant=auth.client_id)
 
     # 5. Persistance sur disque
     file_id = str(uuid.uuid4())
     abs_path, checksum = await save_file_to_disk(encrypted_content, category, file_id)
     relative_path = build_stored_path(category, file_id)
 
-    # 6. Thumbnail
+    # 6. Thumbnail — chiffrée au repos pour les catégories sensibles
     thumb_relative = None
     if thumb_bytes:
-        thumb_relative = await save_thumbnail(thumb_bytes, file_id)
+        thumb_store = encrypt_bytes(thumb_bytes, category, tenant=auth.client_id)
+        thumb_relative = await save_thumbnail(thumb_store, file_id)
 
     # 7. Métadonnées en base
     stored_file = models.StoredFile(
@@ -299,26 +302,36 @@ async def upload_from_url(
     auth: AuthContext = Depends(get_auth_context),
 ):
     validate_category(category)
-    if not url.startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
 
     max_bytes = settings.max_sizes_bytes[category]
 
     async def _download() -> bytes:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client_http:
-            async with client_http.stream("GET", url) as resp:
-                resp.raise_for_status()
-                chunks = []
-                total = 0
-                async for chunk in resp.aiter_bytes(65536):
-                    total += len(chunk)
-                    if total > max_bytes:
-                        raise HTTPException(
-                            status_code=413,
-                            detail=f"Remote file too large (max {max_bytes // 1024 // 1024} MB)"
-                        )
-                    chunks.append(chunk)
-                return b"".join(chunks)
+        # Redirections suivies manuellement : chaque hop est re-validé
+        # contre le SSRF (une 302 peut rebasculer vers une IP privée).
+        current = url
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=False) as client_http:
+            for _ in range(4):
+                await validate_remote_url(current)
+                async with client_http.stream("GET", current) as resp:
+                    if resp.status_code in (301, 302, 303, 307, 308):
+                        location = resp.headers.get("location")
+                        if not location:
+                            raise HTTPException(status_code=400, detail="Invalid redirect from remote URL")
+                        current = urljoin(current, location)
+                        continue
+                    resp.raise_for_status()
+                    chunks = []
+                    total = 0
+                    async for chunk in resp.aiter_bytes(65536):
+                        total += len(chunk)
+                        if total > max_bytes:
+                            raise HTTPException(
+                                status_code=413,
+                                detail=f"Remote file too large (max {max_bytes // 1024 // 1024} MB)"
+                            )
+                        chunks.append(chunk)
+                    return b"".join(chunks)
+            raise HTTPException(status_code=400, detail="Too many redirects")
 
     try:
         content = await asyncio.wait_for(_download(), timeout=20.0)
@@ -372,7 +385,7 @@ async def list_files(
 
     if auth.client_id:
         query = query.where(models.StoredFile.client_id == auth.client_id)
-        if not auth.is_admin:
+        if not (auth.is_admin or auth.is_tenant_admin):
             query = query.where(models.StoredFile.owner_user_id == auth.user_id)
     elif not auth.is_admin:
         query = query.where(models.StoredFile.owner_user_id == auth.user_id)
@@ -428,8 +441,14 @@ async def get_thumbnail(
     async with aiofiles.open(abs_path, "rb") as f:
         data = await f.read()
 
+    # Miniatures des fichiers sensibles : chiffrées au repos → déchiffrer à la volée
+    if stored_file.is_encrypted and looks_encrypted(data):
+        data = decrypt_bytes(data, stored_file.category, tenant=stored_file.client_id)
+
+    cache = ("public, max-age=86400" if stored_file.is_public()
+             else "no-store, no-cache, must-revalidate, private")
     return Response(content=data, media_type="image/jpeg",
-                    headers={"Cache-Control": "public, max-age=86400"})
+                    headers={"Cache-Control": cache})
 
 
 # ──────────────────────────────────────────────
@@ -669,7 +688,7 @@ async def _stream_response(stored_file: models.StoredFile) -> StreamingResponse:
     if stored_file.is_encrypted:
         async with aiofiles.open(abs_path, "rb") as f:
             encrypted = await f.read()
-        data = decrypt_bytes(encrypted, stored_file.category)
+        data = decrypt_bytes(encrypted, stored_file.category, tenant=stored_file.client_id)
 
         headers = {
             "Content-Disposition": f'attachment; filename="{stored_file.original_filename or stored_file.id}"',

@@ -17,6 +17,7 @@ from urllib.parse import urlencode
 import aiofiles
 
 from app.config import settings
+from app.utils.security import derive_secret
 
 
 def compute_sha256(content: bytes) -> str:
@@ -74,10 +75,10 @@ def generate_signed_url(file_id: str, ttl_seconds: Optional[int] = None) -> tupl
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
     expires_ts = int(expires_at.timestamp())
 
-    # Sign: HMAC(secret, file_id + ":" + expires_ts)
+    # Sign: HMAC(secret dérivé, file_id + ":" + expires_ts)
     message = f"{file_id}:{expires_ts}"
     sig = hmac.new(
-        settings.hmac_secret.encode(),
+        derive_secret("signed-url").encode(),
         message.encode(),
         hashlib.sha256,
     ).hexdigest()  # type: ignore[attr-defined]
@@ -101,7 +102,7 @@ def verify_signed_url(file_id: str, expires: str, sig: str) -> bool:
     # Recompute signature
     message = f"{file_id}:{expires_ts}"
     expected_sig = hmac.new(
-        settings.hmac_secret.encode(),
+        derive_secret("signed-url").encode(),
         message.encode(),
         hashlib.sha256,
     ).hexdigest()
