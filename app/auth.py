@@ -39,8 +39,26 @@ class AuthContext:
         self.plan = plan
 
     @property
+    def is_master(self) -> bool:
+        """Clé maître interne (depuis l'env) — pas une clé client."""
+        return self.plan == "internal"
+
+    @property
     def is_admin(self) -> bool:
-        return self.role in ("admin", "kyc_agent")
+        """
+        Privilège global : réservé à la clé maître interne.
+        X-User-Role est auto-déclaré par l'appelant — une clé client ne doit
+        pas pouvoir s'élever en administrateur global via un simple header.
+        """
+        return self.is_master and self.role in ("admin", "kyc_agent")
+
+    @property
+    def is_tenant_admin(self) -> bool:
+        """
+        Admin déclaré au sein d'un tenant : peut voir les fichiers de son
+        propre client_id, sans jamais franchir la frontière du tenant.
+        """
+        return self.client_id is not None and self.role in ("admin", "kyc_agent")
 
     def can_access_file(self, file_owner_id: str, file_client_id: Optional[str] = None) -> bool:
         """Check if this caller may access a file."""
@@ -136,6 +154,8 @@ async def get_auth_context(
     Two modes:
     1. Full service-to-service: X-API-Key + X-Timestamp + X-Signature
        The backend passes the end-user identity via X-User-Id / X-User-Role.
+       Le rôle "admin"/"kyc_agent" n'est honoré au niveau global que pour la
+       clé maître interne ; pour une clé client, il est confiné au tenant.
     2. Simple API key (dev/test only): X-API-Key alone.
     """
     if not x_api_key:

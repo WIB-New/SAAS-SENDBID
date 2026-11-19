@@ -92,7 +92,7 @@ async def test_connection(
             "role":       auth.role,
             "plan":       auth.plan,
             "plan_label": plan["name"],
-            "is_admin":   auth.is_admin,
+            "is_admin":   auth.is_admin or auth.is_tenant_admin,
         },
         "quota": {
             "plan":           auth.plan,

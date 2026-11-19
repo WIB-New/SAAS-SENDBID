@@ -60,6 +60,44 @@ async def purge_deleted_files() -> dict:
     return summary
 
 
+async def purge_legacy_plaintext_thumbnails() -> int:
+    """
+    Supprime les miniatures de fichiers sensibles écrites en clair par les
+    anciennes versions (v1 chiffrait le fichier mais pas son thumbnail).
+    Retourne le nombre de miniatures supprimées.
+    """
+    import aiofiles
+    from sqlalchemy import select
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.models import StoredFile
+    from app.utils.encryption import looks_encrypted
+
+    cleaned = 0
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(StoredFile).where(
+                StoredFile.is_encrypted == True,
+                StoredFile.thumbnail_path.isnot(None),
+            )
+        )
+        for f in result.scalars():
+            abs_path = settings.upload_path / f.thumbnail_path
+            try:
+                if not abs_path.exists():
+                    continue
+                async with aiofiles.open(abs_path, "rb") as fh:
+                    head = await fh.read(16)
+                if not looks_encrypted(head):
+                    abs_path.unlink()
+                    f.thumbnail_path = None
+                    cleaned += 1
+            except Exception as exc:
+                logger.error(f"[PURGE] Error cleaning thumbnail {f.id}: {exc}")
+        await session.commit()
+    return cleaned
+
+
 def start_scheduler() -> AsyncIOScheduler:
     """Démarre le planificateur de tâches en arrière-plan."""
     scheduler = AsyncIOScheduler(timezone="UTC")
