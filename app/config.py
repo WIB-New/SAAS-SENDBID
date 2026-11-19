@@ -93,7 +93,7 @@ PLANS = {
         "upload_rate_per_min": 20,
         "max_file_size_mb":   5,
         "webhooks":           False,
-        "encryption":         False,         # pas de chiffrement sur le plan gratuit
+        "encryption":         True,          # chiffrement toujours actif — sécurité, pas une option payante
         "bulk_upload":        False,
         "badge":              "Starter",
         "color":              "#6b7280",

@@ -32,7 +32,7 @@ import asyncio
 from app.auth import AuthContext, get_auth_context
 from app.config import get_plan, settings
 from app.database import get_db
-from app.ratelimit import upload_limit, bulk_limit, url_limit
+from app.ratelimit import upload_limit, bulk_limit, url_limit, plan_upload_limit
 from app.utils.audit import log_access
 from app.utils.encryption import decrypt_bytes, encrypt_bytes, should_encrypt, looks_encrypted
 from app.utils.file_validation import validate_upload, prevent_path_traversal, validate_category
@@ -187,7 +187,7 @@ async def _do_upload(
              summary="Upload un fichier (avatar, KYC, reçu)")
 async def upload_file(
     request: Request,
-    _rl=Depends(upload_limit),
+    _rl=Depends(plan_upload_limit),
     file: UploadFile = File(...),
     category: str = Form(...),
     owner_user_id: Optional[str] = Form(None),
@@ -199,6 +199,7 @@ async def upload_file(
     # Quota SaaS
     content, mime_type = await validate_upload(file, category)
     if auth.client_id:
+        _check_file_size(auth, len(content))
         await _check_quota(db, auth, len(content))
 
     # Tags parsing
@@ -255,6 +256,11 @@ async def upload_bulk(
     auth: AuthContext = Depends(get_auth_context),
 ):
     validate_category(category)
+    if auth.client_id and not get_plan(auth.plan).get("bulk_upload", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Bulk upload requires the Pro plan or higher. Upgrade via POST /v1/accounts/plan.",
+        )
     tags_dict = None
     if tags:
         try:
@@ -269,6 +275,7 @@ async def upload_bulk(
         try:
             content, mime_type = await validate_upload(f, category)
             if auth.client_id:
+                _check_file_size(auth, len(content))
                 await _check_quota(db, auth, len(content))
             res = await _do_upload(content, mime_type, category, f.filename, auth, db, tags_dict)
             results.append(schemas.BulkUploadResult(
@@ -360,6 +367,7 @@ async def upload_from_url(
         raise HTTPException(status_code=400, detail=f"File type not allowed for category '{category}'")
 
     if auth.client_id:
+        _check_file_size(auth, len(content))
         await _check_quota(db, auth, len(content))
 
     return await _do_upload(content, mime_type, category, filename, auth, db, tags)
@@ -550,7 +558,7 @@ async def list_versions(
 async def replace_file(
     file_id: str,
     request: Request,
-    _rl=Depends(upload_limit),
+    _rl=Depends(plan_upload_limit),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
@@ -560,6 +568,7 @@ async def replace_file(
 
     content, mime_type = await validate_upload(file, parent.category)
     if auth.client_id:
+        _check_file_size(auth, len(content))
         await _check_quota(db, auth, len(content))
 
     return await _do_upload(
@@ -657,6 +666,20 @@ async def delete_file(
 # ──────────────────────────────────────────────
 #  Helpers privés
 # ──────────────────────────────────────────────
+def _check_file_size(auth: AuthContext, size_bytes: int):
+    """Applique la limite max_file_size_mb du plan (en plus de la limite par catégorie)."""
+    max_bytes = get_plan(auth.plan).get("max_file_size_mb", 0) * 1024 * 1024
+    if max_bytes and size_bytes > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"File exceeds the {get_plan(auth.plan)['max_file_size_mb']} MB "
+                f"limit of plan '{get_plan(auth.plan)['name']}'. "
+                "Upgrade via POST /v1/accounts/plan."
+            ),
+        )
+
+
 async def _check_quota(db: AsyncSession, auth: AuthContext, new_bytes: int):
     """Vérifie le quota de stockage du plan SaaS."""
     plan = get_plan(auth.plan)

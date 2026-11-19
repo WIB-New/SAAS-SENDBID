@@ -62,7 +62,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     return HealthResponse(
         status=overall,
-        version="1.0.0",
+        version="2.0.0",
         env=settings.app_env,
         uptime_seconds=round(time.time() - _start_time, 1),
         db=db_status,
@@ -117,7 +117,7 @@ async def service_info():
     """
     return {
         "service":  "storagehub",
-        "version":  "1.0.0",
+        "version":  "2.0.0",
         "env":      settings.app_env,
         "categories": {
             cat: {

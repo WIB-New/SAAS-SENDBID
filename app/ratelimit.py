@@ -6,6 +6,9 @@ import time
 from collections import defaultdict
 from fastapi import Depends, HTTPException, Request
 
+from app.auth import AuthContext, get_auth_context
+from app.config import get_plan
+
 
 class _InMemoryRateLimiter:
     """Fenêtre glissante par IP."""
@@ -58,6 +61,22 @@ upload_limit  = RateLimit("upload",  max_calls=60,  period=60)   # 60 uploads/mi
 bulk_limit    = RateLimit("bulk",    max_calls=10,  period=60)   # 10 bulk/minute
 url_limit     = RateLimit("url",     max_calls=20,  period=60)   # 20 from-url/minute
 global_limit  = RateLimit("global",  max_calls=300, period=60)   # 300 req/minute global
+
+
+async def plan_upload_limit(
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Rate limit d'upload appliquant le quota `upload_rate_per_min` du plan
+    du client. FastAPI met en cache get_auth_context : l'auth n'est
+    résolue qu'une fois par requête. La clé maître interne n'est pas limitée.
+    """
+    if auth.is_master:
+        return
+    plan = get_plan(auth.plan)
+    identity = auth.client_id or _get_ip(request)
+    _store.check(f"upload:{identity}", plan["upload_rate_per_min"], 60)
 
 # Pour compatibilité avec main.py (slowapi n'est plus nécessaire mais gardé pour l'exception handler)
 class _FakeLimiter:

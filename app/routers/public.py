@@ -6,55 +6,59 @@ NOTE: In production this is served by Nginx directly from disk.
 This route exists for development/testing only.
 IMPORTANT: Nginx MUST NOT serve /kyc/ or /receipts/ paths publicly.
 """
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
 import aiofiles
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import models
 from app.config import settings
+from app.database import get_db
 
 router = APIRouter(tags=["public"])
 
 
 @router.get("/v1/public/avatars/{file_id}")
-async def serve_public_avatar(file_id: str):
-    """Serve a public avatar file (no authentication required)."""
-    # Only allow avatars — strict enforcement
-    # Search for the file in the avatars directory
-    avatars_root = settings.upload_path / "avatars"
-
-    if not avatars_root.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Find file by ID (could be in year/month subdirectory)
-    found_path = None
-    for f in avatars_root.rglob(file_id):
-        if f.is_file():
-            found_path = f
-            break
-
-    if not found_path:
+async def serve_public_avatar(file_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Serve a public avatar file (no authentication required).
+    Lookup direct en base : seuls les fichiers enregistrés en catégorie
+    'avatars' et non supprimés sont servis — avec leur vrai type MIME.
+    """
+    result = await db.execute(
+        select(models.StoredFile).where(
+            models.StoredFile.id == file_id,
+            models.StoredFile.category == "avatars",
+            models.StoredFile.is_deleted == False,
+        )
+    )
+    stored_file = result.scalar_one_or_none()
+    if not stored_file:
         raise HTTPException(status_code=404, detail="Avatar not found")
 
-    # Security check: ensure path is inside avatars directory only
+    abs_path = settings.upload_path / stored_file.stored_path
+    # Sécurité : le chemin doit rester strictement dans le dossier avatars
+    avatars_root = settings.upload_path / "avatars"
     try:
-        found_path.resolve().relative_to(avatars_root.resolve())
+        abs_path.resolve().relative_to(avatars_root.resolve())
     except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    if not abs_path.exists():
+        raise HTTPException(status_code=404, detail="Avatar not found on disk")
+
     async def file_iterator():
-        async with aiofiles.open(found_path, "rb") as f:
+        async with aiofiles.open(abs_path, "rb") as f:
             while chunk := await f.read(65536):
                 yield chunk
 
-    # Guess MIME from extension-less file
-    size = found_path.stat().st_size
-
     return StreamingResponse(
         file_iterator(),
-        media_type="image/jpeg",
+        media_type=stored_file.mime_type,
         headers={
             "Cache-Control": "public, max-age=31536000, immutable",
-            "Content-Length": str(size),
+            "Content-Length": str(stored_file.size_bytes),
             "X-Content-Type-Options": "nosniff",
         },
     )

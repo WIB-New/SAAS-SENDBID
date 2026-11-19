@@ -144,7 +144,9 @@ async def register(body: RegisterIn, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="An account with this email already exists")
 
-    plan_id = body.plan if body.plan in PLANS else "free"
+    # Les comptes démarrent toujours en plan gratuit — les plans payants sont
+    # assignés par l'API admin (master key) après facturation effective.
+    plan_id = "free"
     client = models.Client(
         id=str(uuid.uuid4()),
         email=email,
@@ -276,7 +278,7 @@ async def revoke_key(
     return {"id": key_id, "revoked": True}
 
 
-# ── Plan change (self-serve, no payment gateway) ──
+# ── Plan change (rétrogradation self-serve uniquement — pas de passerelle de paiement) ──
 @router.post("/v1/accounts/plan", summary="Changer de plan d'abonnement")
 async def change_plan(
     body: PlanIn,
@@ -287,6 +289,16 @@ async def change_plan(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid plan. Must be one of: {', '.join(PLANS)}",
+        )
+    # Sans passerelle de paiement, un client ne peut pas s'offrir un plan
+    # payant lui-même — seul l'admin (master key) peut attribuer un upgrade.
+    if body.plan != "free":
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Plan upgrades require a paid subscription. "
+                "Contact sales — or provision via POST /v1/admin/clients/{client_id}/plan (master key)."
+            ),
         )
     client.plan = body.plan
     await db.commit()
@@ -362,16 +374,20 @@ async def get_stats(
     )
     thumb_count = thumb_result.scalar() or 0
 
-    # Uploads par jour (30 derniers jours)
-    from sqlalchemy import text as sa_text
+    # Uploads par jour (30 derniers jours) — ORM, compatible SQLite et PostgreSQL
     daily_result = await db.execute(
-        sa_text(
-            "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(size_bytes),0) as sz "
-            "FROM stored_files "
-            "WHERE client_id = :cid AND is_deleted = 0 "
-            "GROUP BY day ORDER BY day DESC LIMIT 30"
-        ),
-        {"cid": client.id},
+        select(
+            func.date(models.StoredFile.created_at),
+            func.count(models.StoredFile.id),
+            func.coalesce(func.sum(models.StoredFile.size_bytes), 0),
+        )
+        .where(
+            models.StoredFile.client_id == client.id,
+            models.StoredFile.is_deleted == False,
+        )
+        .group_by(func.date(models.StoredFile.created_at))
+        .order_by(func.date(models.StoredFile.created_at).desc())
+        .limit(30)
     )
     uploads_by_day = [
         {"date": str(r[0]), "count": r[1], "size_bytes": r[2]}
