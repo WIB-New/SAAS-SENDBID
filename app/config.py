@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     max_size_avatar_mb:   int = 5
     max_size_kyc_mb:      int = 10
     max_size_receipt_mb:  int = 10
+    max_size_file_mb:     int = 100
     storage_backend:      str = "local"   # "local" | "s3"
 
     # S3 / Cloudflare R2 / MinIO (si storage_backend = "s3")
@@ -64,6 +65,7 @@ class Settings(BaseSettings):
             "avatars":  self.max_size_avatar_mb  * 1024 * 1024,
             "kyc":      self.max_size_kyc_mb     * 1024 * 1024,
             "receipts": self.max_size_receipt_mb * 1024 * 1024,
+            "files":    self.max_size_file_mb    * 1024 * 1024,
         }
 
     @property
@@ -72,6 +74,7 @@ class Settings(BaseSettings):
             "avatars":  ["image/jpeg", "image/png", "image/webp"],
             "kyc":      ["image/jpeg", "image/png", "application/pdf"],
             "receipts": ["image/jpeg", "image/png", "application/pdf"],
+            "files":    ["*"],   # catégorie générique — tout type sauf exécutables (bloqués par l'antivirus)
         }
 
     @property

@@ -56,7 +56,7 @@ async def public_status(request: Request, db: AsyncSession = Depends(get_db)):
             }
             for pid, p in PLANS.items()
         },
-        "categories": ["avatars", "kyc", "receipts"],
+        "categories": ["avatars", "kyc", "receipts", "files"],
         "docs_url":   f"{base}/docs" if not settings.is_production else None,
     }
 
@@ -189,6 +189,7 @@ async def integration_guide(request: Request):
             "avatars":  {"public": True,  "max": f"{settings.max_size_avatar_mb} MB",  "types": ["JPEG","PNG","WebP"]},
             "kyc":      {"public": False, "max": f"{settings.max_size_kyc_mb} MB",     "types": ["JPEG","PNG","PDF"], "note": "Chiffré AES-256"},
             "receipts": {"public": False, "max": f"{settings.max_size_receipt_mb} MB", "types": ["JPEG","PNG","PDF"], "note": "Chiffré AES-256"},
+            "files":    {"public": False, "max": f"{settings.max_size_file_mb} MB",    "types": ["*"], "note": "Tout type sauf exécutables — champ 'folder' pour préserver l'arborescence"},
         },
 
         # ── Exemples de code ─────────────────────────────────────────────

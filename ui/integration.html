@@ -480,7 +480,7 @@ section{padding:90px 0}
         <h4 style="margin-bottom:14px;font-size:.92rem;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;font-weight:700">Test de connexion</h4>
         <div class="test-panel">
           <div class="test-bar">
-            <input id="test-key" placeholder="Votre X-API-Key" value="dev-api-key-sendbid-2024">
+            <input id="test-key" placeholder="Votre X-API-Key" value="dev-api-key-change-in-production">
             <button class="btn b-pri b-sm" onclick="doTestConnect()">Tester →</button>
           </div>
           <div class="result-area" id="test-result">En attente de votre clé API…</div>
@@ -492,7 +492,7 @@ section{padding:90px 0}
         <h4 style="margin-bottom:14px;font-size:.92rem;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;font-weight:700">Upload de test</h4>
         <div class="test-panel">
           <div class="test-bar">
-            <input id="up-key" placeholder="X-API-Key" value="dev-api-key-sendbid-2024" style="max-width:200px">
+            <input id="up-key" placeholder="X-API-Key" value="dev-api-key-change-in-production" style="max-width:200px">
             <select id="up-cat" style="padding:11px 12px;border-radius:10px;border:1px solid var(--line2);background:#fff;color:var(--txt);font-size:.85rem;font-family:inherit;outline:none">
               <option value="avatars">📷 Avatars</option>
               <option value="kyc">🔒 KYC</option>
@@ -521,7 +521,7 @@ section{padding:90px 0}
       <h4 style="margin-bottom:14px;font-size:.92rem;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;font-weight:700">Quota en temps réel</h4>
       <div class="quota-card">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
-          <input id="quota-key" placeholder="X-API-Key" value="dev-api-key-sendbid-2024" style="flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);color:var(--txt);font-size:.88rem;font-family:var(--mono);outline:none;transition:.2s">
+          <input id="quota-key" placeholder="X-API-Key" value="dev-api-key-change-in-production" style="flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);color:var(--txt);font-size:.88rem;font-family:var(--mono);outline:none;transition:.2s">
           <button class="btn b-pri b-sm" onclick="doQuota()">Voir le quota →</button>
         </div>
         <div id="quota-display">
@@ -947,7 +947,7 @@ async function doTestConnect() {
         el.textContent = [
           'INFO : Cle admin detectee',
           '',
-          '   La cle "dev-api-key-sendbid-2024" est la cle master.',
+          '   La cle "dev-api-key-change-in-production" est la cle master.',
           '   Elle donne acces aux endpoints /v1/admin/* mais',
           '   n\'est liee a aucun compte client.',
           '',
@@ -1044,7 +1044,7 @@ async function doQuota() {
             <div>
               <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">Clé admin — aucun quota associé</div>
               <div style="font-size:.85rem;color:#3b82f6;line-height:1.6">
-                La clé <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">dev-api-key-sendbid-2024</code> est la <strong>clé master administrateur</strong>.<br>
+                La clé <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">dev-api-key-change-in-production</code> est la <strong>clé master administrateur</strong>.<br>
                 Elle donne accès aux endpoints <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">/v1/admin/*</code> mais n'est liée à aucun compte client.<br><br>
                 Pour voir un quota, utilisez la <strong>clé API d'un compte client</strong> — format&nbsp;:
                 <code style="background:#dbeafe;border-radius:4px;padding:1px 6px;font-size:.78rem">shk_…</code>
@@ -1109,7 +1109,7 @@ async function doQuota() {
 async function loadAdminStats() {
   try {
     const r = await fetch(`${BASE}/v1/admin/overview`, {
-      headers:{ 'X-API-Key':'dev-api-key-sendbid-2024', 'X-User-Id':'admin' }
+      headers:{ 'X-API-Key':'dev-api-key-change-in-production', 'X-User-Id':'admin' }
     });
     if (!r.ok) return;
     const d = await r.json();

@@ -35,8 +35,8 @@ DANGEROUS_SIGNATURES = [
     b"PK\x03\x04",   # ZIP (could be JAR, DOCX with macro, etc.) — warn
 ]
 
-# Allowed categories
-VALID_CATEGORIES = {"avatars", "kyc", "receipts"}
+# Allowed categories — "files" = catégorie générique (tout type non-exécutable)
+VALID_CATEGORIES = {"avatars", "kyc", "receipts", "files"}
 
 
 def detect_mime_from_magic(data: bytes) -> Optional[str]:
@@ -96,24 +96,31 @@ async def validate_upload(
             ),
         )
 
-    # 2. Dangerous executable check
-    if is_dangerous_file(content):
+    allowed = settings.allowed_mimes.get(category, [])
+
+    # 2. Dangerous executable check — sauf catégorie 'files' où l'antivirus
+    #    (scan_content) couvre les vrais exécutables ; is_dangerous_file bloque
+    #    aussi les conteneurs ZIP/DOCX, acceptables dans une catégorie générique.
+    if category != "files" and is_dangerous_file(content):
         raise HTTPException(
             status_code=400,
             detail="Executable or script files are not allowed",
         )
 
-    # 3. Real MIME detection via magic bytes
+    # 3. Real MIME detection via magic bytes — 'files' accepte tout type,
+    #    y compris sans signature connue (application/octet-stream)
     detected_mime = detect_mime_from_magic(content)
     if detected_mime is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot determine file type from content. File may be corrupted or unsupported.",
-        )
+        if "*" in allowed:
+            detected_mime = "application/octet-stream"
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot determine file type from content. File may be corrupted or unsupported.",
+            )
 
     # 4. MIME whitelist check
-    allowed = settings.allowed_mimes.get(category, [])
-    if detected_mime not in allowed:
+    if "*" not in allowed and detected_mime not in allowed:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -148,3 +155,16 @@ def prevent_path_traversal(path: str) -> str:
     # Remove relative path indicators
     cleaned = re.sub(r"\.\.", "", cleaned)
     return cleaned
+
+
+def sanitize_folder(path: str) -> str:
+    """
+    Normalise un chemin de dossier fourni par le client (upload de dossier).
+    Conservé comme métadonnée (tags) uniquement — jamais utilisé comme
+    chemin disque. Supprime '..', séparateurs redondants, NUL.
+    """
+    parts = [
+        p for p in re.split(r"[/\\]+", path.replace("\x00", ""))
+        if p not in ("", ".", "..")
+    ]
+    return "/".join(parts)[:512]

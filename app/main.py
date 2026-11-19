@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
     global _scheduler
 
     # Créer les dossiers de stockage
-    for cat in ["avatars", "kyc", "receipts", "thumbnails"]:
+    for cat in ["avatars", "kyc", "receipts", "files", "thumbnails"]:
         (settings.upload_path / cat).mkdir(parents=True, exist_ok=True)
 
     # Initialiser la base de données

@@ -50,7 +50,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     # ── Check storage dirs
     upload_root = settings.upload_path
-    for cat in ["avatars", "kyc", "receipts"]:
+    for cat in ["avatars", "kyc", "receipts", "files"]:
         cat_path = upload_root / cat
         checks[f"dir_{cat}"] = {"status": "ok" if cat_path.exists() else "missing"}
 
@@ -125,7 +125,7 @@ async def service_info():
                 "max_size_mb":  settings.max_sizes_bytes[cat] // (1024 * 1024),
                 "allowed_mimes": settings.allowed_mimes[cat],
             }
-            for cat in ["avatars", "kyc", "receipts"]
+            for cat in ["avatars", "kyc", "receipts", "files"]
         },
         "signed_url_default_ttl_seconds": settings.signed_url_ttl,
         "cdn_base_url": settings.cdn_base_url,
