@@ -15,7 +15,7 @@ intègre le stockage dans son application web, mobile ou backend.
 - **Comptes self-service** — inscription → credentials API générés instantanément
 - **Dashboard client** — clés API (créer/révoquer), statistiques d'usage, plans
 - **Auth service-to-service** — `X-API-Key` + `X-Timestamp` + `X-Signature` (HMAC-SHA256, anti-rejeu 30 s)
-- **3 catégories** — `avatars` (public, cache CDN) · `kyc` et `receipts` (privés, audités)
+- **4 catégories** — `avatars` (public, cache CDN) · `kyc` et `receipts` (privés, chiffrés, audités) · `files` (générique, tout type non-exécutable, privé — supporte les dossiers via `folder`)
 - **Sécurité fichiers** — détection MIME par magic bytes, rejet exécutables, purge EXIF, anti path-traversal
 - **URLs signées** — partage temporaire de fichiers sensibles, TTL plafonné par plan
 - **Quotas par plan** — appliqués côté serveur à chaque upload

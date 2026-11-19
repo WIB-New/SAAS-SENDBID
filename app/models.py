@@ -19,6 +19,7 @@ class FileCategory(str, enum.Enum):
     avatars  = "avatars"
     kyc      = "kyc"
     receipts = "receipts"
+    files    = "files"
 
 
 # ── Client SaaS ────────────────────────────────────────────────────────────────

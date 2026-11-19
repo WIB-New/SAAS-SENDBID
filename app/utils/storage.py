@@ -116,7 +116,7 @@ def get_disk_usage_by_category() -> dict:
     result = {}
     upload_root = settings.upload_path
 
-    for category in ["avatars", "kyc", "receipts"]:
+    for category in ["avatars", "kyc", "receipts", "files"]:
         cat_path = upload_root / category
         if cat_path.exists():
             total_size = sum(

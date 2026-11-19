@@ -35,7 +35,7 @@ from app.database import get_db
 from app.ratelimit import upload_limit, bulk_limit, url_limit, plan_upload_limit
 from app.utils.audit import log_access
 from app.utils.encryption import decrypt_bytes, encrypt_bytes, should_encrypt, looks_encrypted
-from app.utils.file_validation import validate_upload, prevent_path_traversal, validate_category
+from app.utils.file_validation import validate_upload, prevent_path_traversal, validate_category, sanitize_folder
 from app.utils.image_processing import strip_exif_and_reencode
 from app.utils.storage import (
     generate_signed_url,
@@ -192,6 +192,7 @@ async def upload_file(
     category: str = Form(...),
     owner_user_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None, description="JSON object de tags, ex: {\"order_id\":\"123\"}"),
+    folder: Optional[str] = Form(None, description="Chemin relatif du dossier (upload de dossier)"),
     replaces_file_id: Optional[str] = Form(None, description="ID du fichier à remplacer (nouvelle version)"),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
@@ -211,6 +212,13 @@ async def upload_file(
                 raise ValueError
         except Exception:
             raise HTTPException(status_code=400, detail="tags must be a valid JSON object")
+
+    # Chemin de dossier (upload de dossier) — stocké en tag, jamais sur disque
+    if folder:
+        clean = sanitize_folder(folder)
+        if clean:
+            tags_dict = tags_dict or {}
+            tags_dict["folder"] = clean
 
     # Versioning
     parent_version = 0
@@ -252,6 +260,7 @@ async def upload_bulk(
     files: list[UploadFile] = File(...),
     category: str = Form(...),
     tags: Optional[str] = Form(None),
+    folder: Optional[str] = Form(None, description="Chemin relatif du dossier (upload de dossier)"),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ):
@@ -267,6 +276,12 @@ async def upload_bulk(
             tags_dict = json.loads(tags)
         except Exception:
             raise HTTPException(status_code=400, detail="tags must be a valid JSON object")
+
+    if folder:
+        clean = sanitize_folder(folder)
+        if clean:
+            tags_dict = tags_dict or {}
+            tags_dict["folder"] = clean
 
     results = []
     uploaded, failed = 0, 0
@@ -360,10 +375,16 @@ async def upload_from_url(
     _vc(category)
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="Empty file")
-    if is_dangerous_file(content):
+    allowed = settings.allowed_mimes.get(category, [])
+    if category != "files" and is_dangerous_file(content):
         raise HTTPException(status_code=400, detail="Executable files are not allowed")
     mime_type = detect_mime_from_magic(content)
-    if not mime_type or mime_type not in settings.allowed_mimes.get(category, []):
+    if not mime_type:
+        if "*" in allowed:
+            mime_type = "application/octet-stream"
+        else:
+            raise HTTPException(status_code=400, detail=f"File type not allowed for category '{category}'")
+    if "*" not in allowed and mime_type not in allowed:
         raise HTTPException(status_code=400, detail=f"File type not allowed for category '{category}'")
 
     if auth.client_id:

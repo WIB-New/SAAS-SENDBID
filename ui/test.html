@@ -147,6 +147,8 @@
     .cpill[data-c="kyc"].on .dot{background:var(--orange);box-shadow:0 0 6px var(--orange)}
     .cpill[data-c="receipts"].on{background:var(--teal-g);border-color:var(--teal);color:var(--teal)}
     .cpill[data-c="receipts"].on .dot{background:var(--teal);box-shadow:0 0 6px var(--teal)}
+    .cpill[data-c="files"].on{background:rgba(56,189,248,.12);border-color:#38bdf8;color:#38bdf8}
+    .cpill[data-c="files"].on .dot{background:#38bdf8;box-shadow:0 0 6px #38bdf8}
 
     /* PROGRESS */
     .prog-wrap{background:var(--surface2);border-radius:99px;height:4px;overflow:hidden;margin-top:12px}
@@ -182,6 +184,7 @@
     .badge-avatars{background:var(--purple-g);color:var(--purple)}
     .badge-kyc{background:var(--orange-g);color:var(--orange)}
     .badge-receipts{background:var(--teal-g);color:var(--teal)}
+    .badge-files{background:rgba(56,189,248,.12);color:#38bdf8}
     .id-chip{font-family:'Courier New',monospace;font-size:11px;color:var(--text2);background:var(--surface3);padding:2px 7px;border-radius:4px}
     .copy-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;border-radius:4px;transition:var(--ease);font-size:12px}
     .copy-btn:hover{color:var(--purple);background:var(--purple-g)}
@@ -315,6 +318,7 @@
             <div class="cpill on" data-c="avatars" onclick="setCat('avatars',this)"><div class="dot"></div>Avatar</div>
             <div class="cpill" data-c="kyc" onclick="setCat('kyc',this)"><div class="dot"></div>KYC / CNI</div>
             <div class="cpill" data-c="receipts" onclick="setCat('receipts',this)"><div class="dot"></div>Reçu</div>
+            <div class="cpill" data-c="files" onclick="setCat('files',this)"><div class="dot"></div>Fichier</div>
           </div>
         </div>
         <div class="field mt2"><label>User ID (propriétaire)</label><input id="upUid" type="text" value="user-001" /></div>
@@ -339,8 +343,10 @@
 
         <div class="btns">
           <button class="btn btn-primary" id="upBtn" onclick="doUpload()" disabled>📤 Envoyer</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('fdir').click()">📁 Dossier…</button>
           <button class="btn btn-ghost" onclick="genFile()">🔧 Générer fichier test</button>
         </div>
+        <input type="file" id="fdir" webkitdirectory multiple style="display:none" onchange="onFolderPick()" />
         <div id="upResp" class="resp" style="display:none"></div>
       </div>
 
@@ -366,7 +372,7 @@
         <div class="g3">
           <div class="field"><label>User ID</label><input id="lUid" value="user-001" /></div>
           <div class="field"><label>Rôle</label><select id="lRole"><option value="user">user</option><option value="admin">admin</option><option value="kyc_agent">kyc_agent</option></select></div>
-          <div class="field"><label>Catégorie</label><select id="lCat"><option value="">Toutes</option><option>avatars</option><option>kyc</option><option>receipts</option></select></div>
+          <div class="field"><label>Catégorie</label><select id="lCat"><option value="">Toutes</option><option>avatars</option><option>kyc</option><option>receipts</option><option>files</option></select></div>
         </div>
         <div class="btns"><button class="btn btn-primary" onclick="loadFiles()">🔄 Charger</button></div>
         <hr class="divider" />
@@ -458,7 +464,7 @@
         <div class="card-hdr"><div class="card-ico">⚙️</div><div><h3>Paramètres API</h3></div></div>
         <div class="g2">
           <div class="field"><label>Base URL</label><input id="cfUrl" value="http://localhost:8080" /></div>
-          <div class="field"><label>API Key</label><input id="cfKey" value="dev-api-key-sendbid-2024" /></div>
+          <div class="field"><label>API Key</label><input id="cfKey" value="dev-api-key-change-in-production" /></div>
           <div class="field"><label>User ID par défaut</label><input id="cfUid" value="user-001" /></div>
           <div class="field"><label>Rôle par défaut</label><select id="cfRole"><option value="user">user</option><option value="admin">admin</option><option value="kyc_agent">kyc_agent</option></select></div>
         </div>
@@ -500,12 +506,13 @@
 // ══════════════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════════════
-let C = { url: window.location.origin, key:'dev-api-key-sendbid-2024', uid:'user-001', role:'user' };
+let C = { url: window.location.origin, key:'dev-api-key-change-in-production', uid:'user-001', role:'user' };
 let selCat = 'avatars', selFile = null;
 const HINTS = {
   avatars:  'Avatar : <strong>JPEG / PNG / WebP</strong> — max 5 MB — URL publique CDN',
   kyc:      'KYC / CNI : <strong>JPEG / PNG / PDF</strong> — max 10 MB — <strong style="color:var(--red)">Aucune URL publique</strong>',
   receipts: 'Reçu : <strong>JPEG / PNG / PDF</strong> — max 10 MB — <strong style="color:var(--red)">Aucune URL publique</strong>',
+  files:    'Fichier : <strong>tous types</strong> (zip, docx, mp4…) — max 100 MB — <strong style="color:var(--red)">Privé</strong> — ou bouton 📁 pour un dossier',
 };
 function h(uid, role){ return {'X-API-Key':C.key,'X-User-Id':uid||C.uid,'X-User-Role':role||C.role} }
 
@@ -583,6 +590,29 @@ async function doUpload(){
     toast(r.ok?`Fichier uploadé — ${d.file_id?.substring(0,8)}…`:`Erreur ${r.status}`,r.ok?'ok':'err');
   }catch(e){ clearInterval(iv); showR('upResp',0,{error:e.message},'err'); toast('Connexion impossible','err'); }
   finally{ setTimeout(()=>{pw.style.display='none';pb.style.width='0'},900); btn.disabled=false; btn.innerHTML='📤 Envoyer'; }
+}
+
+// Upload de dossier : chaque fichier part sur /v1/files avec son chemin relatif
+// en champ 'folder' (préservé en tag côté serveur, jamais utilisé sur disque).
+async function onFolderPick(){
+  const fl=[...document.getElementById('fdir').files];
+  if(!fl.length) return;
+  const uid=document.getElementById('upUid').value||C.uid;
+  let ok=0, ko=0, errors=[];
+  for(const f of fl){
+    const rel=f.webkitRelativePath||f.name;
+    const folder=rel.includes('/')?rel.substring(0,rel.lastIndexOf('/')):'';
+    const fd=new FormData();
+    fd.append('file',f,f.name); fd.append('category','files');
+    fd.append('owner_user_id',uid); if(folder) fd.append('folder',folder);
+    try{
+      const r=await fetch(`${C.url}/v1/files`,{method:'POST',headers:h(uid),body:fd});
+      r.ok?ok++:(ko++,errors.push(`${rel}: ${(await r.json()).error||r.status}`));
+    }catch(e){ ko++; errors.push(`${rel}: ${e.message}`); }
+  }
+  showR('upResp', ok?200:500, {dossier:`${ok} fichier(s) uploadé(s)`, échecs:ko, erreurs:errors.slice(0,10)}, ok&&!ko?'ok':(ok?'info':'err'));
+  toast(`Dossier : ${ok} OK / ${ko} échec(s)`, ok?'ok':'err');
+  document.getElementById('fdir').value='';
 }
 
 async function genFile(){
