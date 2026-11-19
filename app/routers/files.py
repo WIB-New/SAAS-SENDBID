@@ -246,8 +246,17 @@ async def _do_upload(
         version=parent_version + 1,
     )
     db.add(stored_file)
-    await db.commit()
-    await db.refresh(stored_file)
+    try:
+        await db.commit()
+        await db.refresh(stored_file)
+    except Exception:
+        # Commit échoué → l'objet existe déjà sur le stockage mais sans
+        # ligne en base : il serait orphelin pour toujours. Nettoyer.
+        from app.utils.storage import delete_file_from_disk
+        await delete_file_from_disk(relative_path)
+        if thumb_relative:
+            await delete_file_from_disk(thumb_relative)
+        raise
 
     pub = (category == "avatars")
     url = f"{settings.cdn_base_url}/v1/public/avatars/{file_id}" if pub else None
@@ -423,6 +432,7 @@ async def upload_from_url(
     auth: AuthContext = Depends(get_auth_context),
 ):
     validate_category(category)
+    _check_tags_size(tags)
 
     max_bytes = settings.max_sizes_bytes[category]
 
@@ -470,10 +480,8 @@ async def upload_from_url(
     filename = url.split("/")[-1].split("?")[0] or "remote_file"
 
     # Valider le contenu téléchargé comme un vrai upload
-    from app.utils.file_validation import validate_category as _vc, detect_mime_from_magic, is_dangerous_file
-    from app.utils.file_validation import VALID_CATEGORIES
+    from app.utils.file_validation import detect_mime_from_magic, is_dangerous_file
 
-    _vc(category)
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="Empty file")
     allowed = settings.allowed_mimes.get(category, [])
@@ -487,8 +495,6 @@ async def upload_from_url(
             raise HTTPException(status_code=400, detail=f"File type not allowed for category '{category}'")
     if "*" not in allowed and mime_type not in allowed:
         raise HTTPException(status_code=400, detail=f"File type not allowed for category '{category}'")
-
-    _check_tags_size(tags)
 
     if auth.client_id:
         _check_file_size(auth, len(content))

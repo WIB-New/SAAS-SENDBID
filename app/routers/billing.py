@@ -64,6 +64,8 @@ async def create_checkout(
             client_reference_id=client.id,
             customer_email=client.email,
             metadata={"client_id": client.id, "plan": body.plan},
+            # Propagé sur la Subscription → retrouvable à l'annulation
+            subscription_data={"metadata": {"client_id": client.id}},
             success_url=f"{settings.base_url}/ui/dashboard.html?billing=success",
             cancel_url=f"{settings.base_url}/ui/dashboard.html?billing=cancel",
         )
@@ -95,22 +97,34 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         client_id = session_obj.get("metadata", {}).get("client_id")
         plan = session_obj.get("metadata", {}).get("plan")
         if client_id and plan in _PLAN_PRICES:
-            result = await db.execute(
-                select(models.Client).where(models.Client.id == client_id)
-            )
-            client = result.scalar_one_or_none()
-            if client:
-                client.plan = plan
-                # Resynchronise le snapshot plan des clés actives
-                keys = await db.execute(
-                    select(models.ApiKey).where(
-                        models.ApiKey.client_id == client.id,
-                        models.ApiKey.revoked == False,
-                    )
-                )
-                for k in keys.scalars().all():
-                    k.plan = plan
-                await db.commit()
-                logger.info(f"Client {client_id} upgraded to '{plan}' via Stripe")
+            await _apply_plan(db, client_id, plan)
+            logger.info(f"Client {client_id} upgraded to '{plan}' via Stripe")
+
+    elif event["type"] == "customer.subscription.deleted":
+        sub = event["data"]["object"]
+        client_id = sub.get("metadata", {}).get("client_id")
+        if client_id:
+            await _apply_plan(db, client_id, "free")
+            logger.info(f"Client {client_id} downgraded to 'free' (subscription cancelled)")
 
     return {"received": True}
+
+
+async def _apply_plan(db: AsyncSession, client_id: str, plan: str):
+    """Assigne un plan et resynchronise le snapshot des clés actives."""
+    result = await db.execute(
+        select(models.Client).where(models.Client.id == client_id)
+    )
+    client = result.scalar_one_or_none()
+    if not client:
+        return
+    client.plan = plan
+    keys = await db.execute(
+        select(models.ApiKey).where(
+            models.ApiKey.client_id == client.id,
+            models.ApiKey.revoked == False,
+        )
+    )
+    for k in keys.scalars().all():
+        k.plan = plan
+    await db.commit()

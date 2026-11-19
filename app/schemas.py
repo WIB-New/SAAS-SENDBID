@@ -3,7 +3,7 @@ StorageHub — Pydantic schemas (request/response)
 """
 from datetime import datetime
 from typing import Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.models import FileCategory
 
 
@@ -97,8 +97,7 @@ class FileMetaResponse(BaseModel):
     parent_id:        Optional[str]  = None
     is_encrypted:     bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedFiles(BaseModel):
@@ -156,8 +155,7 @@ class AuditLogEntry(BaseModel):
     success:           bool
     details:           Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Ping ───────────────────────────────────────────────────────────────────────
@@ -181,8 +179,7 @@ class WebhookResponse(BaseModel):
     is_active:  bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WebhookDeliveryResponse(BaseModel):
@@ -194,8 +191,7 @@ class WebhookDeliveryResponse(BaseModel):
     error:           Optional[str]
     attempted_at:    datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Stats analytiques ──────────────────────────────────────────────────────────
