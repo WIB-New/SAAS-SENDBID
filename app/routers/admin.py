@@ -13,6 +13,7 @@ POST /v1/admin/clients/{id}/activate   Réactiver un compte
 """
 import time
 from datetime import datetime, timedelta
+from app.utils.time import utcnow
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -81,7 +82,7 @@ async def admin_overview(db: AsyncSession = Depends(get_db)):
     )
 
     # Activité récente (24h) — ORM, compatible SQLite et PostgreSQL
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    cutoff = utcnow() - timedelta(hours=24)
     recent_result = await db.execute(
         select(func.count(models.StoredFile.id)).where(
             models.StoredFile.created_at >= cutoff
@@ -103,7 +104,7 @@ async def admin_overview(db: AsyncSession = Depends(get_db)):
         "service":  "StorageHub",
         "version":  "2.0.0",
         "uptime_hours": round((time.time() - _start_time) / 3600, 2),
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": utcnow().isoformat() + "Z",
 
         "clients": {
             "total":    total_clients,

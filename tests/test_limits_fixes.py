@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi import HTTPException
 
+from app.utils.time import utcnow
 from tests.conftest import TEST_HEADERS, make_minimal_jpeg
 
 
@@ -101,11 +102,11 @@ async def test_audit_retention_purge(client):
     async with AsyncSessionLocal() as session:
         session.add(AuditLog(
             file_id=fid, requester_user_id="u", requester_role="user",
-            action="download", timestamp=datetime.utcnow() - timedelta(days=4000),
+            action="download", timestamp=utcnow() - timedelta(days=4000),
         ))
         session.add(AuditLog(
             file_id=fid, requester_user_id="u", requester_role="user",
-            action="download", timestamp=datetime.utcnow(),
+            action="download", timestamp=utcnow(),
         ))
         await session.commit()
 
@@ -116,7 +117,7 @@ async def test_audit_retention_purge(client):
         remaining = (await session.execute(select(AuditLog))).scalars().all()
     # Reste le log "upload" créé par l'API + le log récent inséré manuellement
     assert len(remaining) == 2
-    assert all(r.timestamp > datetime.utcnow() - timedelta(days=365) for r in remaining)
+    assert all(r.timestamp > utcnow() - timedelta(days=365) for r in remaining)
 
 
 @pytest.mark.asyncio

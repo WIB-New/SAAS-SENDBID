@@ -2,6 +2,7 @@
 StorageHub — Audit logging for sensitive file access
 """
 from datetime import datetime
+from app.utils.time import utcnow
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +29,7 @@ async def log_access(
         action=action[:50],
         ip_address=ip_address[:64] if ip_address else None,
         user_agent=user_agent[:512] if user_agent else None,
-        timestamp=datetime.utcnow(),
+        timestamp=utcnow(),
         success=success,
         details=details,
     )

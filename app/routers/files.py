@@ -19,6 +19,7 @@ import json
 import re
 import uuid
 from datetime import datetime
+from app.utils.time import utcnow
 from typing import Optional
 from urllib.parse import quote, urljoin
 
@@ -35,7 +36,7 @@ import asyncio
 from app.auth import AuthContext, get_auth_context
 from app.config import get_plan, settings
 from app.database import get_db
-from app.ratelimit import bulk_limit, url_limit, plan_upload_limit
+from app.ratelimit import bulk_limit, url_limit, plan_upload_limit, global_limit
 from app.utils.audit import log_access
 from app.utils.encryption import decrypt_bytes, encrypt_bytes, should_encrypt, looks_encrypted
 from app.utils.file_validation import validate_upload, prevent_path_traversal, validate_category, sanitize_folder
@@ -151,9 +152,20 @@ def _check_tags_size(tags_dict: Optional[dict]):
         raise HTTPException(status_code=400, detail="tags too large (max 4 KB serialized)")
 
 
+def _public_url(file_id: str, stored_path: str) -> str:
+    """
+    URL publique d'un avatar. Si le backend expose une base publique
+    (S3_PUBLIC_BASE_URL → R2/CDN direct), elle prime — le contenu est
+    alors servi par le CDN sans transiter par l'API.
+    """
+    from app.utils.backends import get_storage_backend
+    direct = get_storage_backend().get_public_url(stored_path)
+    return direct or f"{settings.cdn_base_url}/v1/public/avatars/{file_id}"
+
+
 def _file_meta(f: models.StoredFile) -> schemas.FileMetaResponse:
     pub = f.is_public()
-    url = f"{settings.cdn_base_url}/v1/public/avatars/{f.id}" if pub else None
+    url = _public_url(f.id, f.stored_path) if pub else None
     thumb = get_thumbnail_url(f.id, settings.cdn_base_url) if f.thumbnail_path else None
     return schemas.FileMetaResponse(
         file_id=f.id,
@@ -259,7 +271,7 @@ async def _do_upload(
         raise
 
     pub = (category == "avatars")
-    url = f"{settings.cdn_base_url}/v1/public/avatars/{file_id}" if pub else None
+    url = _public_url(file_id, relative_path) if pub else None
     thumb_url = get_thumbnail_url(file_id, settings.cdn_base_url) if thumb_relative else None
 
     return schemas.FileUploadResponse(
@@ -424,6 +436,7 @@ async def upload_bulk(
 async def upload_from_url(
     request: Request,
     _rl=Depends(url_limit),
+    _rl2=Depends(plan_upload_limit),  # un import distant compte dans le quota uploads/min du plan
     url: str = Body(..., embed=True),
     category: str = Body(..., embed=True),
     tags: Optional[dict] = Body(None, embed=True),
@@ -436,7 +449,7 @@ async def upload_from_url(
 
     max_bytes = settings.max_sizes_bytes[category]
 
-    async def _download() -> bytes:
+    async def _download() -> tuple[bytes, str]:
         # Redirections suivies manuellement : chaque hop est re-validé et
         # épinglé sur l'IP résolue (anti DNS-rebinding) — une 302 peut
         # rebasculer vers une IP privée.
@@ -465,11 +478,11 @@ async def upload_from_url(
                                 detail=f"Remote file too large (max {max_bytes // 1024 // 1024} MB)"
                             )
                         chunks.append(chunk)
-                    return b"".join(chunks)
+                    return b"".join(chunks), current
             raise HTTPException(status_code=400, detail="Too many redirects")
 
     try:
-        content = await asyncio.wait_for(_download(), timeout=20.0)
+        content, final_url = await asyncio.wait_for(_download(), timeout=20.0)
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Remote file download took too long")
     except HTTPException:
@@ -477,7 +490,8 @@ async def upload_from_url(
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {exc}")
 
-    filename = url.split("/")[-1].split("?")[0] or "remote_file"
+    # Nom de fichier dérivé de l'URL FINALE (après redirections), pas de la source
+    filename = final_url.split("/")[-1].split("?")[0] or "remote_file"
 
     # Valider le contenu téléchargé comme un vrai upload
     from app.utils.file_validation import detect_mime_from_magic, is_dangerous_file
@@ -790,7 +804,8 @@ async def get_signed_url(
 # ──────────────────────────────────────────────
 #  GET /v1/files/{file_id}/download — Via URL signée
 # ──────────────────────────────────────────────
-@router.get("/{file_id}/download", summary="Télécharger via URL signée (sans auth header)")
+@router.get("/{file_id}/download", dependencies=[Depends(global_limit)],
+            summary="Télécharger via URL signée (sans auth header)")
 async def download_via_signed_url(
     file_id: str,
     expires: str,
@@ -830,7 +845,7 @@ async def delete_file(
     # La chaîne est une liste chaînée (parent → version précédente) :
     # remonter à la racine puis collecter tous les descendants en BFS.
     root = await _chain_root(db, stored_file)
-    now = datetime.utcnow()
+    now = utcnow()
     for f in await _chain_rows(db, root.id):
         if not f.is_deleted:
             f.is_deleted = True

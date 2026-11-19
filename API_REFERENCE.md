@@ -584,6 +584,8 @@ Même scoping d'accès que `GET /v1/files`.
 
 ## Webhooks
 
+> **Auth** : `X-API-Key` (intégrations, signée HMAC en prod) ou `Authorization: Bearer <jwt>` (dashboard) — les deux fonctionnent sur toutes les routes `/v1/webhooks`.
+
 ### `POST /v1/webhooks` — Enregistrer un webhook
 
 ```json

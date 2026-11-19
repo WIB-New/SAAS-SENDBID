@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import time
 from datetime import datetime
+from app.utils.time import utcnow
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, Request, status
@@ -136,7 +137,7 @@ async def _resolve_api_key(
 
     # last_used_at : écriture throttlée (1×/60 s par clé) — sinon chaque
     # requête authentifiée coûte un UPDATE en base.
-    now = datetime.utcnow()
+    now = utcnow()
     if key_row.last_used_at is None or (now - key_row.last_used_at).total_seconds() > 60:
         key_row.last_used_at = now
         await db.commit()
@@ -242,14 +243,18 @@ async def get_current_client(
 
 
 async def get_client_from_api_key(
+    request: Request,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    x_timestamp: Optional[str] = Header(None, alias="X-Timestamp"),
+    x_signature: Optional[str] = Header(None, alias="X-Signature"),
     authorization: Optional[str] = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ) -> models.Client:
     """
     Résolution flexible du client :
-    - Depuis l'API key (X-API-Key) — pour les intégrateurs externes
     - Depuis le JWT Bearer (Authorization) — pour le dashboard
+    - Depuis l'API key (X-API-Key) — pour les intégrateurs externes ;
+      en production la signature HMAC est exigée comme partout ailleurs.
     """
     # Essai 1 : JWT Bearer
     if authorization and authorization.startswith("Bearer "):
@@ -268,12 +273,32 @@ async def get_client_from_api_key(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="MASTER_KEY_NO_CLIENT",
             )
-        _, client_id, _ = await _resolve_api_key(db, x_api_key)
-        if client_id:
-            r = await db.execute(select(models.Client).where(models.Client.id == client_id))
-            c = r.scalar_one_or_none()
-            if c and c.is_active:
-                return c
+        hmac_secret, client_id, _ = await _resolve_api_key(db, x_api_key)
+        if not client_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="INVALID_CLIENT_KEY",
+            )
+        # En production, la clé seule ne suffit pas — vérifier la signature
+        # HMAC (corps vide pour les requêtes GET de stats/usage).
+        if settings.is_production:
+            if not (x_timestamp and x_signature):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="HMAC signature required in production",
+                )
+            body = await request.body()
+            if not _verify_hmac_signature(
+                x_api_key, x_timestamp, x_signature, body, hmac_secret
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Invalid or expired HMAC signature",
+                )
+        r = await db.execute(select(models.Client).where(models.Client.id == client_id))
+        c = r.scalar_one_or_none()
+        if c and c.is_active:
+            return c
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="INVALID_CLIENT_KEY",

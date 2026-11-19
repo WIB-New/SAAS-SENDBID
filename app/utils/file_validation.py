@@ -143,9 +143,9 @@ def safe_filename(category: str) -> str:
     Never use client-supplied filenames.
     """
     import uuid
-    from datetime import datetime
+    from app.utils.time import utcnow
 
-    now = datetime.utcnow()
+    now = utcnow()
     year_month = now.strftime("%Y/%m")
     uid = str(uuid.uuid4()).replace("-", "")
     return f"{year_month}/{uid}"
