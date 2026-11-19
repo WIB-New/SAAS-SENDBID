@@ -53,6 +53,7 @@ async def init_db():
                 sf_cols = {c["name"] for c in insp.get_columns("stored_files")}
                 migrations = {
                     "client_id":      "VARCHAR(36)",
+                    "folder":         "VARCHAR(512)",
                     "tags":           "TEXT",
                     "thumbnail_path": "VARCHAR(1024)",
                     "is_encrypted":   "BOOLEAN DEFAULT false",

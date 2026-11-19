@@ -102,7 +102,7 @@ async def test_files_elf_still_blocked(client):
 
 @pytest.mark.asyncio
 async def test_files_folder_metadata_preserved(client):
-    """folder param is stored in tags and readable via /meta."""
+    """folder param is stored on the record and readable via /meta."""
     resp = await client.post(
         "/v1/files",
         files={"file": ("photo.png", io.BytesIO(make_minimal_jpeg()), "image/jpeg")},
@@ -114,7 +114,7 @@ async def test_files_folder_metadata_preserved(client):
         f"/v1/files/{resp.json()['file_id']}/meta", headers=TEST_HEADERS
     )
     assert meta.status_code == 200
-    assert meta.json()["tags"]["folder"] == "vacances/2024"
+    assert meta.json()["folder"] == "vacances/2024"
 
 
 @pytest.mark.asyncio
@@ -130,7 +130,7 @@ async def test_files_folder_traversal_sanitized(client):
     meta = await client.get(
         f"/v1/files/{resp.json()['file_id']}/meta", headers=TEST_HEADERS
     )
-    folder = meta.json()["tags"]["folder"]
+    folder = meta.json()["folder"]
     assert ".." not in folder
     assert folder == "etc/evil"
 
@@ -151,6 +151,57 @@ async def test_files_bulk_upload(client):
     data = resp.json()
     assert data["uploaded"] == 2
     assert data["failed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_folders_endpoint_lists_directories(client):
+    """GET /v1/files/folders returns uploaded folders with stats."""
+    for name, folder in [("a.bin", "docs/2024"), ("b.bin", "docs/2024"), ("c.bin", "media")]:
+        await client.post(
+            "/v1/files",
+            files={"file": (name, io.BytesIO(b"\x01data"), "application/octet-stream")},
+            data={"category": "files", "folder": folder},
+            headers=TEST_HEADERS,
+        )
+    resp = await client.get("/v1/files/folders", headers=TEST_HEADERS)
+    assert resp.status_code == 200, resp.text
+    folders = {f["folder"]: f for f in resp.json()}
+    assert folders["docs/2024"]["file_count"] == 2
+    assert folders["media"]["file_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_files_filter_by_folder(client):
+    """?folder= filters the file list to one directory."""
+    for name, folder in [("in.bin", "target"), ("out.bin", "other")]:
+        await client.post(
+            "/v1/files",
+            files={"file": (name, io.BytesIO(b"\x02data"), "application/octet-stream")},
+            data={"category": "files", "folder": folder},
+            headers=TEST_HEADERS,
+        )
+    resp = await client.get("/v1/files?folder=target", headers=TEST_HEADERS)
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert len(items) == 1
+    assert items[0]["folder"] == "target"
+    assert items[0]["original_filename"] == "in.bin"
+
+
+@pytest.mark.asyncio
+async def test_list_files_search_by_name(client):
+    """?q= searches filenames."""
+    await client.post(
+        "/v1/files",
+        files={"file": ("rapport_final.bin", io.BytesIO(b"\x03x"), "application/octet-stream")},
+        data={"category": "files"},
+        headers=TEST_HEADERS,
+    )
+    resp = await client.get("/v1/files?q=rapport", headers=TEST_HEADERS)
+    assert resp.status_code == 200
+    assert any("rapport" in (i["original_filename"] or "") for i in resp.json()["items"])
+    resp2 = await client.get("/v1/files?q=nomatch_zzz", headers=TEST_HEADERS)
+    assert resp2.json()["total"] == 0
 
 
 @pytest.mark.asyncio

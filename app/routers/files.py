@@ -80,6 +80,8 @@ def _file_meta(f: models.StoredFile) -> schemas.FileMetaResponse:
         file_id=f.id,
         owner_user_id=f.owner_user_id,
         category=f.category,
+        original_filename=f.original_filename,
+        folder=f.folder,
         mime_type=f.mime_type,
         size_bytes=f.size_bytes,
         checksum_sha256=f.checksum_sha256,
@@ -105,6 +107,7 @@ async def _do_upload(
     tags: Optional[dict] = None,
     parent_id: Optional[str] = None,
     parent_version: int = 0,
+    folder: Optional[str] = None,
 ) -> schemas.FileUploadResponse:
     """Logique commune d'upload — utilisée par upload_file, bulk et from-url."""
 
@@ -149,6 +152,7 @@ async def _do_upload(
         owner_user_id=auth.user_id,
         category=category,
         original_filename=prevent_path_traversal(original_filename or "")[:512] or None,
+        folder=sanitize_folder(folder) if folder else None,
         stored_path=relative_path,
         mime_type=mime_type,
         size_bytes=len(content),       # taille non chiffrée
@@ -213,12 +217,8 @@ async def upload_file(
         except Exception:
             raise HTTPException(status_code=400, detail="tags must be a valid JSON object")
 
-    # Chemin de dossier (upload de dossier) — stocké en tag, jamais sur disque
-    if folder:
-        clean = sanitize_folder(folder)
-        if clean:
-            tags_dict = tags_dict or {}
-            tags_dict["folder"] = clean
+    # Chemin de dossier (upload de dossier) — colonne dédiée, jamais sur disque
+    clean_folder = sanitize_folder(folder) if folder else None
 
     # Versioning
     parent_version = 0
@@ -229,7 +229,8 @@ async def upload_file(
         parent_id = replaces_file_id
         parent_version = parent_file.version
 
-    result = await _do_upload(content, mime_type, category, file.filename, auth, db, tags_dict, parent_id, parent_version)
+    result = await _do_upload(content, mime_type, category, file.filename, auth, db,
+                              tags_dict, parent_id, parent_version, folder=clean_folder)
 
     await log_access(
         db, result.file_id, auth.user_id, auth.role, "upload",
@@ -277,11 +278,7 @@ async def upload_bulk(
         except Exception:
             raise HTTPException(status_code=400, detail="tags must be a valid JSON object")
 
-    if folder:
-        clean = sanitize_folder(folder)
-        if clean:
-            tags_dict = tags_dict or {}
-            tags_dict["folder"] = clean
+    clean_folder = sanitize_folder(folder) if folder else None
 
     results = []
     uploaded, failed = 0, 0
@@ -292,7 +289,8 @@ async def upload_bulk(
             if auth.client_id:
                 _check_file_size(auth, len(content))
                 await _check_quota(db, auth, len(content))
-            res = await _do_upload(content, mime_type, category, f.filename, auth, db, tags_dict)
+            res = await _do_upload(content, mime_type, category, f.filename, auth, db,
+                                   tags_dict, folder=clean_folder)
             results.append(schemas.BulkUploadResult(
                 filename=f.filename,
                 success=True,
@@ -320,6 +318,7 @@ async def upload_from_url(
     url: str = Body(..., embed=True),
     category: str = Body(..., embed=True),
     tags: Optional[dict] = Body(None, embed=True),
+    folder: Optional[str] = Body(None, embed=True),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ):
@@ -391,7 +390,8 @@ async def upload_from_url(
         _check_file_size(auth, len(content))
         await _check_quota(db, auth, len(content))
 
-    return await _do_upload(content, mime_type, category, filename, auth, db, tags)
+    return await _do_upload(content, mime_type, category, filename, auth, db,
+                            tags, folder=folder)
 
 
 # ──────────────────────────────────────────────
@@ -401,6 +401,8 @@ async def upload_from_url(
             summary="Lister les fichiers (paginé)")
 async def list_files(
     category: Optional[str] = None,
+    folder: Optional[str] = Query(None, description="Filtrer par dossier (chemin exact)"),
+    q: Optional[str] = Query(None, description="Recherche sur le nom de fichier"),
     page: int = Query(1, ge=1, description="Numéro de page"),
     limit: int = Query(20, ge=1, le=100, description="Fichiers par page"),
     sort: str = Query("created_at:desc", description="Tri : champ:asc|desc"),
@@ -421,6 +423,17 @@ async def list_files(
 
     if category:
         query = query.where(models.StoredFile.category == category)
+
+    if folder is not None:
+        clean = sanitize_folder(folder)
+        if clean:
+            query = query.where(models.StoredFile.folder == clean)
+        else:
+            # Chaîne vide après assainissement = racine (fichiers sans dossier)
+            query = query.where(models.StoredFile.folder.is_(None))
+
+    if q:
+        query = query.where(models.StoredFile.original_filename.ilike(f"%{q}%"))
 
     # Total
     count_result = await db.execute(select(func.count()).select_from(query.subquery()))
@@ -446,6 +459,41 @@ async def list_files(
         limit=limit,
         pages=max(1, (total + limit - 1) // limit),
     )
+
+
+# ──────────────────────────────────────────────
+#  GET /v1/files/folders — Arborescence des dossiers
+# ──────────────────────────────────────────────
+@router.get("/folders", response_model=list[schemas.FolderInfo],
+            summary="Lister les dossiers logiques avec stats")
+async def list_folders(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    query = select(
+        models.StoredFile.folder,
+        func.count().label("file_count"),
+        func.coalesce(func.sum(models.StoredFile.size_bytes), 0).label("total_bytes"),
+    ).where(
+        models.StoredFile.is_deleted == False,
+        models.StoredFile.parent_id.is_(None),
+        models.StoredFile.folder.isnot(None),
+    )
+
+    if auth.client_id:
+        query = query.where(models.StoredFile.client_id == auth.client_id)
+        if not (auth.is_admin or auth.is_tenant_admin):
+            query = query.where(models.StoredFile.owner_user_id == auth.user_id)
+    elif not auth.is_admin:
+        query = query.where(models.StoredFile.owner_user_id == auth.user_id)
+
+    query = query.group_by(models.StoredFile.folder).order_by(models.StoredFile.folder)
+    result = await db.execute(query)
+    return [
+        schemas.FolderInfo(folder=row.folder, file_count=row.file_count,
+                           total_bytes=row.total_bytes)
+        for row in result.all()
+    ]
 
 
 # ──────────────────────────────────────────────

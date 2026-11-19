@@ -82,6 +82,8 @@ class FileMetaResponse(BaseModel):
     file_id:          str
     owner_user_id:    str
     category:         str
+    original_filename: Optional[str] = None
+    folder:           Optional[str] = None
     mime_type:        str
     size_bytes:       int
     checksum_sha256:  str
@@ -105,6 +107,13 @@ class PaginatedFiles(BaseModel):
     page:   int
     limit:  int
     pages:  int
+
+
+class FolderInfo(BaseModel):
+    """Un dossier logique (champ folder des uploads) avec ses stats."""
+    folder:      str
+    file_count:  int
+    total_bytes: int
 
 
 # ── URL signée ─────────────────────────────────────────────────────────────────

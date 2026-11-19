@@ -71,6 +71,7 @@ class StoredFile(Base):
     owner_user_id:     Mapped[str]       = mapped_column(String(255),  nullable=False, index=True)
     category:          Mapped[str]       = mapped_column(String(50),   nullable=False, index=True)
     original_filename: Mapped[str|None]  = mapped_column(String(512),  nullable=True)
+    folder:            Mapped[str|None]  = mapped_column(String(512),  nullable=True, index=True)
     stored_path:       Mapped[str]       = mapped_column(String(1024), nullable=False)
     mime_type:         Mapped[str]       = mapped_column(String(128),  nullable=False)
     size_bytes:        Mapped[int]       = mapped_column(Integer,      nullable=False)

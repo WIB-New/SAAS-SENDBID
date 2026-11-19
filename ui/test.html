@@ -367,14 +367,19 @@
 
     <!-- ═══════ FILES ═══════ -->
     <div class="section" id="s-files">
-      <div class="ptitle"><h2>Mes fichiers</h2><p>Lister, inspecter et supprimer des fichiers stockés</p></div>
+      <div class="ptitle"><h2>Mes fichiers</h2><p>Explorateur : dossiers, historique des uploads, accès direct</p></div>
       <div class="card">
         <div class="g3">
           <div class="field"><label>User ID</label><input id="lUid" value="user-001" /></div>
           <div class="field"><label>Rôle</label><select id="lRole"><option value="user">user</option><option value="admin">admin</option><option value="kyc_agent">kyc_agent</option></select></div>
           <div class="field"><label>Catégorie</label><select id="lCat"><option value="">Toutes</option><option>avatars</option><option>kyc</option><option>receipts</option><option>files</option></select></div>
         </div>
-        <div class="btns"><button class="btn btn-primary" onclick="loadFiles()">🔄 Charger</button></div>
+        <div class="g2" style="margin-top:10px">
+          <div class="field"><label>🔎 Recherche (nom de fichier)</label><input id="lQ" placeholder="ex : rapport, photo…" onkeydown="if(event.key==='Enter')loadFiles()" /></div>
+          <div class="field"><label>Dossier sélectionné</label><input id="lFolder" placeholder="(tous)" readonly style="font-family:'Courier New',monospace" /></div>
+        </div>
+        <div id="foldersBar" style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0"></div>
+        <div class="btns"><button class="btn btn-primary" onclick="loadFiles();loadFolders()">🔄 Charger</button></div>
         <hr class="divider" />
         <div id="filesOut"><p class="muted sm" style="text-align:center;padding:20px 0">Cliquez sur "Charger" pour afficher les fichiers.</p></div>
       </div>
@@ -548,7 +553,7 @@ function show(id, el){
   document.getElementById('s-'+id).classList.add('act');
   el.classList.add('act');
   if(id==='health') loadHealth();
-  if(id==='files')  loadFiles();
+  if(id==='files')  { loadFiles(); loadFolders(); }
   if(id==='integration') initTestBlocs();
 }
 
@@ -645,38 +650,82 @@ async function badUpload(type){
 }
 
 // ══════════════════════════════════════════
-//  FILES LIST
+//  FILES EXPLORER — dossiers, historique, accès
 // ══════════════════════════════════════════
+let curFolder = null;   // dossier actif (null = tous)
+
+async function loadFolders(){
+  const uid=document.getElementById('lUid').value||C.uid;
+  const role=document.getElementById('lRole').value;
+  const bar=document.getElementById('foldersBar');
+  try{
+    const r=await fetch(`${C.url}/v1/files/folders`,{headers:h(uid,role)});
+    const folders=await r.json();
+    if(!r.ok||!Array.isArray(folders)){ bar.innerHTML=''; return; }
+    let chips=`<button class="btn ${curFolder===null?'btn-primary':'btn-ghost'} btn-xs" onclick="pickFolder(null)">📂 Tous</button>`;
+    for(const f of folders){
+      const on=curFolder===f.folder;
+      chips+=`<button class="btn ${on?'btn-primary':'btn-ghost'} btn-xs" onclick="pickFolder('${f.folder.replace(/'/g,"\\'")}')" title="${(f.total_bytes/1024).toFixed(0)} KB">📁 ${f.folder} <span class="muted">(${f.file_count})</span></button>`;
+    }
+    bar.innerHTML=chips;
+  }catch(e){ bar.innerHTML=''; }
+}
+
+function pickFolder(f){
+  curFolder=f;
+  document.getElementById('lFolder').value=f||'(tous)';
+  loadFolders(); loadFiles();
+}
+
+async function openFile(id, isPublic, uid, role){
+  if(isPublic){ window.open(`${C.url}/v1/public/avatars/${id}`,'_blank'); return; }
+  try{
+    const r=await fetch(`${C.url}/v1/files/${id}/signed?ttl=60`,{headers:h(uid,role)});
+    const d=await r.json();
+    if(r.ok){ window.open(d.signed_url,'_blank'); toast('URL signée générée (60 s)','ok'); }
+    else toast(`Erreur: ${d.error?.detail||d.detail||d.error||'accès refusé'}`,'err');
+  }catch(e){ toast(e.message,'err'); }
+}
+
 async function loadFiles(){
   const uid=document.getElementById('lUid').value||C.uid;
   const role=document.getElementById('lRole').value;
   const cat=document.getElementById('lCat').value;
-  const q=cat?`?category=${cat}`:'';
+  const q=document.getElementById('lQ').value.trim();
+  const params=new URLSearchParams({limit:'100',sort:'created_at:desc'});
+  if(cat) params.set('category',cat);
+  if(curFolder) params.set('folder',curFolder);
+  if(q) params.set('q',q);
   try{
-    const r=await fetch(`${C.url}/v1/files${q}`,{headers:h(uid,role)});
-    const files=await r.json();
-    if(!r.ok){ document.getElementById('filesOut').innerHTML=`<div class="alert alert-err"><span class="ai">❌</span>${files.detail||JSON.stringify(files)}</div>`; return; }
+    const r=await fetch(`${C.url}/v1/files?${params}`,{headers:h(uid,role)});
+    const data=await r.json();
+    if(!r.ok){ document.getElementById('filesOut').innerHTML=`<div class="alert alert-err"><span class="ai">❌</span>${data.detail||JSON.stringify(data)}</div>`; return; }
+    const files=data.items||[];
     if(!files.length){ document.getElementById('filesOut').innerHTML='<p class="muted sm" style="padding:20px 0;text-align:center">Aucun fichier trouvé.</p>'; return; }
     let rows='';
     for(const f of files){
       const id=f.file_id;
+      const name=f.original_filename||'(sans nom)';
+      const folder=f.folder?`<span class="muted sm">📁 ${f.folder}</span>`:'<span class="muted sm">—</span>';
       rows+=`<tr>
-        <td><span class="id-chip" title="${id}">${id.substring(0,8)}…</span><button class="copy-btn" onclick="cp('${id}')">⧉</button></td>
+        <td><div style="font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</div>
+            <span class="id-chip" title="${id}">${id.substring(0,8)}…</span><button class="copy-btn" onclick="cp('${id}')">⧉</button></td>
+        <td>${folder}</td>
         <td><span class="badge badge-${f.category}">${f.category}</span></td>
         <td style="font-family:'Courier New',monospace;font-size:11px">${f.mime_type}</td>
         <td>${(f.size_bytes/1024).toFixed(1)} KB</td>
-        <td style="font-size:12px">${f.owner_user_id}</td>
-        <td style="font-size:11px;color:var(--text3)">${new Date(f.created_at).toLocaleDateString('fr')}</td>
+        <td style="font-size:11px;color:var(--text3)">${new Date(f.created_at).toLocaleString('fr')}</td>
         <td><div class="act-row">
+          <button class="btn btn-ghost btn-xs" title="Ouvrir / télécharger" onclick="openFile('${id}',${f.is_public},'${uid}','${role}')">⬇</button>
           <button class="btn btn-ghost btn-xs" title="Utiliser cet ID" onclick="fillId('${id}')">🔍</button>
           <button class="btn btn-danger btn-xs" onclick="delFile('${id}','${uid}','${role}')">🗑️</button>
         </div></td>
       </tr>`;
     }
     document.getElementById('filesOut').innerHTML=`
-      <p class="muted sm" style="margin-bottom:10px">${files.length} fichier(s)</p>
+      <p class="muted sm" style="margin-bottom:10px">${data.total} fichier(s) — historique trié du plus récent au plus ancien</p>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>File ID</th><th>Catégorie</th><th>MIME</th><th>Taille</th><th>Propriétaire</th><th>Créé</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Fichier</th><th>Dossier</th><th>Catégorie</th><th>MIME</th><th>Taille</th><th>Uploadé le</th><th>Actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`;
   }catch(e){ document.getElementById('filesOut').innerHTML=`<div class="alert alert-err"><span class="ai">❌</span>${e.message}</div>`; }
@@ -687,7 +736,7 @@ async function delFile(id, uid, role){
   const r=await fetch(`${C.url}/v1/files/${id}`,{method:'DELETE',headers:h(uid,role)});
   const d=await r.json();
   toast(r.ok?'Fichier supprimé':`Erreur: ${d.detail}`,r.ok?'ok':'err');
-  if(r.ok) loadFiles();
+  if(r.ok) { loadFiles(); loadFolders(); }
 }
 function fillId(id){
   document.getElementById('acId').value=id;
