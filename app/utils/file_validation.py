@@ -101,19 +101,29 @@ async def validate_upload(
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="Empty file not allowed")
 
+    return content, validate_content(content, category)
+
+
+def validate_content(content: bytes, category: str) -> str:
+    """
+    Valide des bytes déjà lus (upload multipart, from-url) et retourne
+    le MIME détecté. Mêmes règles que la fin de validate_upload :
+    exécutables interdits hors 'files', détection par magic bytes,
+    whitelist MIME de la catégorie.
+    """
     allowed = settings.allowed_mimes.get(category, [])
 
-    # 2. Dangerous executable check — sauf catégorie 'files' où l'antivirus
-    #    (scan_content) couvre les vrais exécutables ; is_dangerous_file bloque
-    #    aussi les conteneurs ZIP/DOCX, acceptables dans une catégorie générique.
+    # Dangerous executable check — sauf catégorie 'files' où l'antivirus
+    # (scan_content) couvre les vrais exécutables ; is_dangerous_file bloque
+    # aussi les conteneurs ZIP/DOCX, acceptables dans une catégorie générique.
     if category != "files" and is_dangerous_file(content):
         raise HTTPException(
             status_code=400,
             detail="Executable or script files are not allowed",
         )
 
-    # 3. Real MIME detection via magic bytes — 'files' accepte tout type,
-    #    y compris sans signature connue (application/octet-stream)
+    # Real MIME detection via magic bytes — 'files' accepte tout type,
+    # y compris sans signature connue (application/octet-stream)
     detected_mime = detect_mime_from_magic(content)
     if detected_mime is None:
         if "*" in allowed:
@@ -124,7 +134,7 @@ async def validate_upload(
                 detail="Cannot determine file type from content. File may be corrupted or unsupported.",
             )
 
-    # 4. MIME whitelist check
+    # MIME whitelist check
     if "*" not in allowed and detected_mime not in allowed:
         raise HTTPException(
             status_code=400,
@@ -134,7 +144,7 @@ async def validate_upload(
             ),
         )
 
-    return content, detected_mime
+    return detected_mime
 
 
 def safe_filename(category: str) -> str:

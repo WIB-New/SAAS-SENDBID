@@ -155,6 +155,52 @@ class Webhook(Base):
         return f"<Webhook {self.url} events={self.events}>"
 
 
+# ── Uploads multipart ───────────────────────────────────────────────────────────
+class MultipartUpload(Base):
+    """
+    Session d'upload par morceaux — pour les gros fichiers (vidéos, archives)
+    ou les réseaux instables. Persistée en base : survit à un redémarrage API.
+    Le client pousse chaque part séparément puis appelle /complete.
+    """
+    __tablename__ = "multipart_uploads"
+
+    id:                Mapped[str]      = mapped_column(String(36),  primary_key=True, default=gen_uuid)
+    client_id:         Mapped[str|None] = mapped_column(String(36),  ForeignKey("clients.id"), nullable=True, index=True)
+    owner_user_id:     Mapped[str]      = mapped_column(String(255), nullable=False, index=True)
+    category:          Mapped[str]      = mapped_column(String(50),  nullable=False)
+    original_filename: Mapped[str|None] = mapped_column(String(512), nullable=True)
+    folder:            Mapped[str|None] = mapped_column(String(512), nullable=True)
+    tags:              Mapped[dict|None] = mapped_column(JSON,       nullable=True)
+    mime_hint:         Mapped[str|None] = mapped_column(String(128), nullable=True)
+    part_size:         Mapped[int]      = mapped_column(Integer,     nullable=False)
+    status:            Mapped[str]      = mapped_column(String(20),  nullable=False, default="active")  # active/completed/aborted
+    created_at:        Mapped[datetime] = mapped_column(DateTime,    server_default=func.now(), nullable=False)
+    expires_at:        Mapped[datetime] = mapped_column(DateTime,    nullable=False)
+
+    parts: Mapped[list["MultipartPart"]] = relationship("MultipartPart", back_populates="upload", lazy="select")
+
+    def __repr__(self) -> str:
+        return f"<MultipartUpload {self.id} cat={self.category} {self.status}>"
+
+
+class MultipartPart(Base):
+    """Un morceau d'upload — objet stocké sous .multipart/{upload_id}/part-N."""
+    __tablename__ = "multipart_parts"
+
+    id:              Mapped[int]      = mapped_column(Integer,     primary_key=True, autoincrement=True)
+    upload_id:       Mapped[str]      = mapped_column(String(36),  ForeignKey("multipart_uploads.id"), nullable=False, index=True)
+    part_number:     Mapped[int]      = mapped_column(Integer,     nullable=False)
+    size_bytes:      Mapped[int]      = mapped_column(Integer,     nullable=False)
+    checksum_sha256: Mapped[str]      = mapped_column(String(64),  nullable=False)
+    stored_path:     Mapped[str]      = mapped_column(String(1024),nullable=False)
+    created_at:      Mapped[datetime] = mapped_column(DateTime,    server_default=func.now(), nullable=False)
+
+    upload: Mapped["MultipartUpload"] = relationship("MultipartUpload", back_populates="parts")
+
+    def __repr__(self) -> str:
+        return f"<MultipartPart upload={self.upload_id} #{self.part_number}>"
+
+
 class WebhookDelivery(Base):
     """Journal des tentatives de livraison webhook."""
     __tablename__ = "webhook_deliveries"

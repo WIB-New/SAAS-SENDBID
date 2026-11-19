@@ -453,6 +453,77 @@ storagehub_category_file_count{category="avatars"} 45
 // re-validées et la connexion est épinglée sur l'IP vérifiée.
 ```
 
+### Upload multipart — gros fichiers, reprise possible
+
+Cycle en 3 temps : `init` → `PUT parts` → `complete`. Chaque part est une
+requête indépendante et re-jouable — idéal pour vidéos, archives, réseaux
+mobiles instables. La session expire après `MULTIPART_SESSION_HOURS` (24 h) ;
+les mêmes limites (catégorie, plan, antivirus, chiffrement) s'appliquent au
+fichier assemblé. Quota : la session compte dans le rate-limit d'upload du plan.
+
+#### `POST /v1/files/multipart/init`
+
+```json
+// REQUEST
+{
+  "filename":   "video.mp4",
+  "category":   "files",
+  "folder":     "videos/2024",           // optionnel
+  "tags":       { "post_id": "42" },     // optionnel
+  "mime_hint":  "video/mp4",             // optionnel (le vrai MIME est détecté au complete)
+  "total_size": 83886080,                // optionnel — check quota anticipé
+  "part_size":  8388608                  // optionnel — défaut 8 Mo, min 1 Mo
+}
+
+// RESPONSE 201
+{
+  "upload_id":    "uuid",
+  "part_size":    8388608,
+  "max_parts":    1000,
+  "expires_at":   "2026-10-16T10:00:00",
+  "put_part_url": "/v1/files/multipart/uuid/parts/{part_number}",
+  "complete_url": "/v1/files/multipart/uuid/complete"
+}
+```
+
+#### `PUT /v1/files/multipart/{upload_id}/parts/{part_number}`
+
+Corps brut (`Content-Type: application/octet-stream`), `part_number` de 1 à
+`max_parts`, taille ≤ `part_size`. Une part peut être re-poussée (remplace la
+précédente). La signature HMAC signe le corps de la part comme d'habitude.
+
+```json
+// RESPONSE 200
+{ "part_number": 1, "size_bytes": 8388608, "etag": "sha256-de-la-part" }
+```
+
+#### `GET /v1/files/multipart/{upload_id}` — État (reprise)
+
+```json
+// RESPONSE 200
+{
+  "upload_id": "uuid", "status": "active",
+  "filename": "video.mp4", "category": "files", "folder": "videos/2024",
+  "part_size": 8388608, "parts_received": 3, "total_bytes": 25165824,
+  "parts": [ {"part_number": 1, "size_bytes": 8388608, "etag": "…", "uploaded_at": "…"} ],
+  "expires_at": "…"
+}
+```
+
+#### `POST /v1/files/multipart/{upload_id}/complete`
+
+Assemble les parts **contiguës 1..N** (checksum SHA-256 de chaque part
+vérifié — une part corrompue doit être re-poussée), applique le pipeline
+complet (antivirus, MIME, EXIF, chiffrement par catégorie) et retourne la
+réponse standard de `POST /v1/files` (201). Les parts sont ensuite purgées.
+
+Erreurs : `400` parts manquantes (`missing: […]`) ou checksum invalide ·
+`410` session expirée · `413` fichier assemblé trop volumineux.
+
+#### `DELETE /v1/files/multipart/{upload_id}` — Abandon
+
+Supprime les parts du stockage et marque la session `aborted`.
+
 ### `GET /v1/files` — Liste paginée
 
 **Params :** `?page=1&limit=20&sort=created_at:desc&category=avatars&folder=docs/2024&q=rapport`

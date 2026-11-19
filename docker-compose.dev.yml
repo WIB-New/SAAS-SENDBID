@@ -1,0 +1,63 @@
+# Infra de développement locale : MinIO (S3-compatible) + Redis + PostgreSQL
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# .env correspondant pour activer le backend S3 en local :
+#   STORAGE_BACKEND=s3
+#   S3_BUCKET=storagehub
+#   S3_ENDPOINT_URL=http://localhost:9000
+#   S3_ACCESS_KEY=minioadmin
+#   S3_SECRET_KEY=minioadmin
+#   S3_REGION=us-east-1
+#   REDIS_URL=redis://localhost:6379/0
+#   # DATABASE_URL=postgresql+asyncpg://storagehub:storagehub@localhost:5432/storagehub
+#
+# Console MinIO : http://localhost:9001 (minioadmin / minioadmin)
+# Créez le bucket "storagehub" une fois (mc mb ou la console).
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # console web
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+
+  # Crée le bucket "storagehub" au premier démarrage
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/storagehub || true;
+      mc anonymous set none local/storagehub;
+      echo 'Bucket storagehub ready';
+      "
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: storagehub
+      POSTGRES_PASSWORD: storagehub
+      POSTGRES_DB: storagehub
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  minio_data:
+  pg_data:

@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     # Rétention des journaux d'audit (jours)
     audit_retention_days: int = 365
 
+    # Upload multipart (gros fichiers, reprise possible)
+    multipart_part_size_mb:  int = 8       # taille par défaut d'une part
+    multipart_max_parts:     int = 1000    # comme S3 : 1..1000 parts/session
+    multipart_session_hours: int = 24      # TTL d'une session non complétée
+    multipart_max_size_mb:   int = 2048    # plafond absolu du fichier assemblé
+
     # Billing Stripe (optionnel — inactif si non configuré)
     stripe_secret_key:     str = ""
     stripe_webhook_secret: str = ""

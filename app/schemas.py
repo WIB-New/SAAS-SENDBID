@@ -115,6 +115,47 @@ class FolderInfo(BaseModel):
     total_bytes: int
 
 
+# ── Upload multipart ────────────────────────────────────────────────────────────
+class MultipartInitRequest(BaseModel):
+    """Corps JSON de POST /v1/files/multipart/init."""
+    filename:   str           = Field(min_length=1, max_length=512)
+    category:   str
+    folder:     Optional[str] = Field(default=None, max_length=512)
+    tags:       Optional[dict] = None
+    mime_hint:  Optional[str] = Field(default=None, max_length=128)
+    total_size: Optional[int] = Field(default=None, ge=1)   # pour check quota anticipé
+    part_size:  Optional[int] = Field(default=None, ge=1024 * 1024)
+
+
+class MultipartInitResponse(BaseModel):
+    upload_id:    str
+    part_size:    int
+    max_parts:    int
+    expires_at:   datetime
+    put_part_url: str     # template : .../parts/{part_number}
+    complete_url: str
+
+
+class MultipartPartInfo(BaseModel):
+    part_number:     int
+    size_bytes:      int
+    etag:            str           # sha256 de la part — vérifié au complete
+    uploaded_at:     Optional[datetime] = None
+
+
+class MultipartStatusResponse(BaseModel):
+    upload_id:      str
+    status:         str
+    filename:       Optional[str]
+    category:       str
+    folder:         Optional[str]
+    part_size:      int
+    parts_received: int
+    total_bytes:    int
+    parts:          list[MultipartPartInfo]
+    expires_at:     datetime
+
+
 # ── URL signée ─────────────────────────────────────────────────────────────────
 class SignedURLResponse(BaseModel):
     file_id:     str

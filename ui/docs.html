@@ -298,6 +298,10 @@ url = client.get_file_url(file_id, user_id=<span class="b">str</span>(request.us
       <tr><td><span class="badge-m post">POST</span></td><td>/v1/files</td><td>Upload (multipart: file, category, owner_user_id?, folder?, tags?)</td></tr>
       <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/bulk</td><td>Upload multiple (plan Pro+)</td></tr>
       <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/from-url</td><td>Importer depuis une URL (anti-SSRF)</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/multipart/init</td><td>Session multipart (gros fichiers, reprise)</td></tr>
+      <tr><td><span class="badge-m put">PUT</span></td><td>/v1/files/multipart/{id}/parts/{n}</td><td>Pousser une part (corps brut, re-jouable)</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/multipart/{id}/complete</td><td>Assembler → fichier final</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/multipart/{id}</td><td>État session (reprise)</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files</td><td>Liste paginée (?category, ?folder, ?q)</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/folders</td><td>Arborescence des dossiers</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}</td><td>Stream authentifié</td></tr>
