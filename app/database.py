@@ -52,13 +52,14 @@ async def init_db():
             if "stored_files" in tables:
                 sf_cols = {c["name"] for c in insp.get_columns("stored_files")}
                 migrations = {
-                    "client_id":      "VARCHAR(36)",
-                    "folder":         "VARCHAR(512)",
-                    "tags":           "TEXT",
-                    "thumbnail_path": "VARCHAR(1024)",
-                    "is_encrypted":   "BOOLEAN DEFAULT false",
-                    "parent_id":      "VARCHAR(36)",
-                    "version":        "INTEGER DEFAULT 1",
+                    "client_id":        "VARCHAR(36)",
+                    "folder":           "VARCHAR(512)",
+                    "original_filename": "VARCHAR(512)",
+                    "tags":             "TEXT",
+                    "thumbnail_path":   "VARCHAR(1024)",
+                    "is_encrypted":     "BOOLEAN DEFAULT false",
+                    "parent_id":        "VARCHAR(36)",
+                    "version":          "INTEGER DEFAULT 1",
                 }
                 for col, typedef in migrations.items():
                     if col not in sf_cols:
@@ -69,6 +70,10 @@ async def init_db():
                     text("CREATE INDEX IF NOT EXISTS ix_stored_files_client_id "
                          "ON stored_files (client_id)")
                 )
+                sync_conn.execute(
+                    text("CREATE INDEX IF NOT EXISTS ix_stored_files_folder "
+                         "ON stored_files (folder)")
+                )
 
             # ── webhook_deliveries ────────────────────────
             if "webhook_deliveries" in tables:
@@ -78,13 +83,50 @@ async def init_db():
                         text("ALTER TABLE webhook_deliveries ADD COLUMN attempts INTEGER DEFAULT 1")
                     )
 
-            # ── api_keys : hachage des clés existantes ────
+            # ── audit_logs : colonnes ajoutées après v1 ───
+            if "audit_logs" in tables:
+                al_cols = {c["name"] for c in insp.get_columns("audit_logs")}
+                al_migrations = {
+                    "details":    "TEXT",
+                    "success":    "BOOLEAN DEFAULT true",
+                    "ip_address": "VARCHAR(64)",
+                    "user_agent": "VARCHAR(512)",
+                }
+                for col, typedef in al_migrations.items():
+                    if col not in al_cols:
+                        sync_conn.execute(
+                            text(f"ALTER TABLE audit_logs ADD COLUMN {col} {typedef}")
+                        )
+
+            # ── clients : colonnes ajoutées après v1 ─────
+            if "clients" in tables:
+                cl_cols = {c["name"] for c in insp.get_columns("clients")}
+                cl_migrations = {
+                    "company_name": "VARCHAR(255)",
+                    "plan":         "VARCHAR(30) DEFAULT 'free'",
+                    "is_active":    "BOOLEAN DEFAULT true",
+                }
+                for col, typedef in cl_migrations.items():
+                    if col not in cl_cols:
+                        sync_conn.execute(
+                            text(f"ALTER TABLE clients ADD COLUMN {col} {typedef}")
+                        )
+
+            # ── api_keys : colonnes + hachage des clés ───
             if "api_keys" in tables:
                 ak_cols = {c["name"] for c in insp.get_columns("api_keys")}
-                if "key_hint" not in ak_cols:
-                    sync_conn.execute(
-                        text("ALTER TABLE api_keys ADD COLUMN key_hint VARCHAR(64)")
-                    )
+                ak_migrations = {
+                    "key_hint":     "VARCHAR(64)",
+                    "name":         "VARCHAR(120) DEFAULT 'API key'",
+                    "plan":         "VARCHAR(30) DEFAULT 'free'",
+                    "revoked":      "BOOLEAN DEFAULT false",
+                    "last_used_at": "DATETIME",
+                }
+                for col, typedef in ak_migrations.items():
+                    if col not in ak_cols:
+                        sync_conn.execute(
+                            text(f"ALTER TABLE api_keys ADD COLUMN {col} {typedef}")
+                        )
                 # Convertir les clés en clair → empreinte SHA-256 + hint.
                 rows = sync_conn.execute(
                     text("SELECT id, api_key FROM api_keys WHERE api_key NOT LIKE 'sha256$%'")
