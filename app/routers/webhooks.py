@@ -12,6 +12,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
+from app.utils.time import utcnow
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -21,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
-from app.auth import get_current_client
+from app.auth import get_client_from_api_key
 from app.config import get_plan
 from app.database import get_db
 from app.utils.url_safety import resolve_pinned_url
@@ -68,7 +69,7 @@ async def _validate_webhook_url(url: str):
              summary="Enregistrer un endpoint webhook")
 async def create_webhook(
     body: schemas.WebhookCreate,
-    client: models.Client = Depends(get_current_client),
+    client: models.Client = Depends(get_client_from_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     if not get_plan(client.plan).get("webhooks", False):
@@ -93,7 +94,7 @@ async def create_webhook(
 @router.get("", response_model=list[schemas.WebhookResponse],
             summary="Lister les webhooks du client")
 async def list_webhooks(
-    client: models.Client = Depends(get_current_client),
+    client: models.Client = Depends(get_client_from_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -107,7 +108,7 @@ async def list_webhooks(
 @router.delete("/{webhook_id}", summary="Supprimer un webhook")
 async def delete_webhook(
     webhook_id: str,
-    client: models.Client = Depends(get_current_client),
+    client: models.Client = Depends(get_client_from_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -128,7 +129,7 @@ async def delete_webhook(
             summary="Historique des livraisons d'un webhook")
 async def webhook_deliveries(
     webhook_id: str,
-    client: models.Client = Depends(get_current_client),
+    client: models.Client = Depends(get_client_from_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     # Vérifier que le webhook appartient au client
@@ -246,7 +247,7 @@ async def fire_event(event: str, data: dict, client_id: Optional[str], db: Async
 
     payload_str = json.dumps({
         "event":       event,
-        "occurred_at": datetime.utcnow().isoformat() + "Z",
+        "occurred_at": utcnow().isoformat() + "Z",
         "data":        data,
     })
 

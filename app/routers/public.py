@@ -15,11 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import models
 from app.config import settings
 from app.database import get_db
+from app.ratelimit import global_limit
 
 router = APIRouter(tags=["public"])
 
 
-@router.get("/v1/public/avatars/{file_id}")
+@router.get("/v1/public/avatars/{file_id}", dependencies=[Depends(global_limit)])
 async def serve_public_avatar(file_id: str, db: AsyncSession = Depends(get_db)):
     """
     Serve a public avatar file (no authentication required).

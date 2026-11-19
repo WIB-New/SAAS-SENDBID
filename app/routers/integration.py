@@ -9,6 +9,7 @@ GET  /v1/integration/openapi      Spec OpenAPI téléchargeable
 """
 import uuid
 from datetime import datetime
+from app.utils.time import utcnow
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -45,7 +46,7 @@ async def public_status(request: Request, db: AsyncSession = Depends(get_db)):
         "version":     "2.0.0",
         "status":      "operational" if db_ok else "degraded",
         "db":          "ok" if db_ok else "error",
-        "timestamp":   datetime.utcnow().isoformat() + "Z",
+        "timestamp":   utcnow().isoformat() + "Z",
         "public_url":  base,
         "plans":       {
             pid: {
@@ -85,7 +86,7 @@ async def test_connection(
         "success":     True,
         "message":     "Credentials valid — connection successful",
         "request_id":  getattr(request.state, "request_id", str(uuid.uuid4())),
-        "timestamp":   datetime.utcnow().isoformat() + "Z",
+        "timestamp":   utcnow().isoformat() + "Z",
         "client": {
             "client_id":  auth.client_id,
             "user_id":    auth.user_id,

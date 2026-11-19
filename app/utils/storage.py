@@ -10,6 +10,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from app.utils.time import utcnow
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
@@ -27,7 +28,7 @@ def build_stored_path(category: str, file_id: str) -> str:
     Build a relative path like: avatars/2024/10/abcdef...
     Avoids huge flat directories.
     """
-    now = datetime.utcnow()
+    now = utcnow()
     year_month = now.strftime("%Y/%m")
     return f"{category}/{year_month}/{file_id}"
 

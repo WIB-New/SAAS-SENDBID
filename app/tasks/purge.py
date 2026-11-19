@@ -7,6 +7,7 @@ Planning : quotidiennement à 03:00 UTC via APScheduler.
 """
 import logging
 from datetime import datetime, timedelta
+from app.utils.time import utcnow
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -25,7 +26,7 @@ async def purge_deleted_files() -> dict:
     from app.models import StoredFile
     from app.utils.backends import get_storage_backend
 
-    threshold = datetime.utcnow() - timedelta(days=PURGE_AFTER_DAYS)
+    threshold = utcnow() - timedelta(days=PURGE_AFTER_DAYS)
     storage = get_storage_backend()
     purged, errors, skipped = 0, 0, 0
 
@@ -70,7 +71,7 @@ async def purge_old_audit_logs() -> int:
     from app.database import AsyncSessionLocal
     from app.models import AuditLog
 
-    threshold = datetime.utcnow() - timedelta(days=settings.audit_retention_days)
+    threshold = utcnow() - timedelta(days=settings.audit_retention_days)
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             delete(AuditLog).where(AuditLog.timestamp < threshold)

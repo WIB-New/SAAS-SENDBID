@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta
+from app.utils.time import utcnow
 from typing import Optional
 
 from jose import JWTError, jwt
@@ -74,8 +75,8 @@ def create_session_token(client_id: str) -> str:
     payload = {
         "sub": client_id,
         "type": "dashboard",
-        "exp": datetime.utcnow() + timedelta(days=SESSION_TTL_DAYS),
-        "iat": datetime.utcnow(),
+        "exp": utcnow() + timedelta(days=SESSION_TTL_DAYS),
+        "iat": utcnow(),
     }
     return jwt.encode(payload, derive_secret("dashboard-jwt"), algorithm=JWT_ALGORITHM)
 
