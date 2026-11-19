@@ -10,6 +10,7 @@ Format v2 : b"SH2G" + nonce(12 o) + ciphertext|tag   (AES-256-GCM authentifié)
 Format v1 (legacy, lecture seule) : token Fernet à sel statique.
 """
 import base64
+import functools
 import hashlib
 import os
 from typing import Optional
@@ -32,8 +33,13 @@ def should_encrypt(category: str) -> bool:
     return category in SENSITIVE_CATEGORIES
 
 
+@functools.lru_cache(maxsize=512)
 def _derive_aes_key(tenant: Optional[str]) -> bytes:
-    """Dérive une clé AES-256 propre au tenant depuis ENCRYPTION_KEY."""
+    """
+    Dérive une clé AES-256 propre au tenant depuis ENCRYPTION_KEY.
+    Cachée en mémoire : 390k itérations PBKDF2 à CHAQUE upload/download était
+    un goulot CPU (et un amplificateur de DoS) — la clé est déterministe.
+    """
     from app.config import settings
     scope = tenant or "internal"
     salt = hashlib.sha256(f"storagehub:enc:v2:{scope}".encode()).digest()
@@ -41,6 +47,7 @@ def _derive_aes_key(tenant: Optional[str]) -> bytes:
     return kdf.derive(settings.encryption_key.encode())
 
 
+@functools.lru_cache(maxsize=1)
 def _legacy_fernet() -> Fernet:
     """Ancienne dérivation v1 (sel statique) — lecture seule, pour migration."""
     from app.config import settings

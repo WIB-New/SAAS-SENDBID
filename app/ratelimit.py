@@ -94,10 +94,18 @@ _store = _make_store()
 
 
 def _get_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """
+    IP cliente. X-Forwarded-For n'est honoré que si le pair direct est le
+    proxy déclaré (TRUSTED_PROXY) — sinon n'importe qui peut forger le
+    header et contourner le rate limiting.
+    """
+    peer = request.client.host if request.client else "unknown"
+    trusted = {p.strip() for p in settings.trusted_proxy.split(",") if p.strip()}
+    if peer in trusted or "*" in trusted:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return peer
 
 
 # ── Dépendances prêtes à l'emploi ──────────────────────────────────────────────

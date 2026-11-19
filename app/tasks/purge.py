@@ -41,9 +41,9 @@ async def purge_deleted_files() -> dict:
 
         for f in files:
             try:
-                ok = storage.delete(f.stored_path)
+                ok = await storage.delete(f.stored_path)
                 if f.thumbnail_path:
-                    storage.delete(f.thumbnail_path)
+                    await storage.delete(f.thumbnail_path)
                 if ok:
                     await session.delete(f)
                     purged += 1
@@ -105,11 +105,11 @@ async def purge_legacy_plaintext_thumbnails() -> int:
         )
         for f in result.scalars():
             try:
-                if not storage.exists(f.thumbnail_path):
+                if not await storage.exists(f.thumbnail_path):
                     continue
                 head = (await storage.read(f.thumbnail_path))[:16]
                 if not looks_encrypted(head):
-                    storage.delete(f.thumbnail_path)
+                    await storage.delete(f.thumbnail_path)
                     f.thumbnail_path = None
                     cleaned += 1
             except Exception as exc:

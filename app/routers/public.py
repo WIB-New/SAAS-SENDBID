@@ -57,7 +57,7 @@ async def serve_public_avatar(file_id: str, db: AsyncSession = Depends(get_db)):
                 while chunk := await f.read(65536):
                     yield chunk
     else:
-        if not backend.exists(stored_file.stored_path):
+        if not await backend.exists(stored_file.stored_path):
             raise HTTPException(status_code=404, detail="Avatar not found in storage")
 
         async def file_iterator():

@@ -11,6 +11,7 @@ Variables S3 :
   S3_BUCKET, S3_ENDPOINT_URL, S3_ACCESS_KEY, S3_SECRET_KEY,
   S3_REGION, S3_PUBLIC_BASE_URL
 """
+import asyncio
 import hashlib
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -31,12 +32,12 @@ class StorageBackend(ABC):
         ...
 
     @abstractmethod
-    def exists(self, relative_path: str) -> bool:
+    async def exists(self, relative_path: str) -> bool:
         """Indique si l'objet existe dans le stockage."""
         ...
 
     @abstractmethod
-    def delete(self, relative_path: str) -> bool:
+    async def delete(self, relative_path: str) -> bool:
         """Supprime le fichier. Retourne True si supprimé."""
         ...
 
@@ -67,10 +68,10 @@ class LocalBackend(StorageBackend):
         async with aiofiles.open(abs_path, "rb") as f:
             return await f.read()
 
-    def exists(self, relative_path: str) -> bool:
+    async def exists(self, relative_path: str) -> bool:
         return (self.upload_root / relative_path).exists()
 
-    def delete(self, relative_path: str) -> bool:
+    async def delete(self, relative_path: str) -> bool:
         abs_path = self.upload_root / relative_path
         try:
             abs_path.unlink(missing_ok=True)
@@ -83,7 +84,11 @@ class LocalBackend(StorageBackend):
 
 
 class S3Backend(StorageBackend):
-    """Backend Amazon S3 / Cloudflare R2 / MinIO."""
+    """
+    Backend Amazon S3 / Cloudflare R2 / MinIO.
+    boto3 est synchrone : tous les appels réseau passent par l'executor
+    pour ne pas bloquer l'event loop (read, head, delete compris).
+    """
 
     def __init__(
         self,
@@ -106,9 +111,8 @@ class S3Backend(StorageBackend):
         )
 
     async def save(self, content: bytes, relative_path: str) -> tuple[str, str]:
-        import asyncio
         checksum = hashlib.sha256(content).hexdigest()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(
             None,
             lambda: self._client.put_object(
@@ -120,27 +124,39 @@ class S3Backend(StorageBackend):
         return relative_path, checksum
 
     async def read(self, relative_path: str) -> bytes:
-        import asyncio
-        loop = asyncio.get_event_loop()
-        resp = await loop.run_in_executor(
-            None,
-            lambda: self._client.get_object(Bucket=self.bucket, Key=relative_path),
-        )
-        return resp["Body"].read()
+        loop = asyncio.get_running_loop()
 
-    def exists(self, relative_path: str) -> bool:
-        try:
-            self._client.head_object(Bucket=self.bucket, Key=relative_path)
-            return True
-        except Exception:
-            return False
+        def _read() -> bytes:
+            # Le Body.read() est un appel réseau bloquant → dans l'executor,
+            # pas dans l'event loop.
+            resp = self._client.get_object(Bucket=self.bucket, Key=relative_path)
+            return resp["Body"].read()
 
-    def delete(self, relative_path: str) -> bool:
-        try:
-            self._client.delete_object(Bucket=self.bucket, Key=relative_path)
-            return True
-        except Exception:
-            return False
+        return await loop.run_in_executor(None, _read)
+
+    async def exists(self, relative_path: str) -> bool:
+        loop = asyncio.get_running_loop()
+
+        def _head() -> bool:
+            try:
+                self._client.head_object(Bucket=self.bucket, Key=relative_path)
+                return True
+            except Exception:
+                return False
+
+        return await loop.run_in_executor(None, _head)
+
+    async def delete(self, relative_path: str) -> bool:
+        loop = asyncio.get_running_loop()
+
+        def _del() -> bool:
+            try:
+                self._client.delete_object(Bucket=self.bucket, Key=relative_path)
+                return True
+            except Exception:
+                return False
+
+        return await loop.run_in_executor(None, _del)
 
     def get_public_url(self, relative_path: str) -> Optional[str]:
         if self.public_base_url:

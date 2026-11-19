@@ -369,9 +369,9 @@ storagehub_category_file_count{category="avatars"} 45
 | `file` | binary | ✅ | Fichier à uploader |
 | `category` | string | ✅ | `avatars` \| `kyc` \| `receipts` \| `files` |
 | `owner_user_id` | string | ❌ | Surcharge X-User-Id |
-| `tags` | JSON string | ❌ | `{"user_id":"123","app":"myapp"}` |
+| `tags` | JSON string | ❌ | `{"user_id":"123","app":"myapp"}` — objet JSON, max 4 KB sérialisé |
 | `folder` | string | ❌ | Chemin de dossier logique (ex: `docs/2024`) — assaini côté serveur, jamais utilisé comme chemin disque |
-| `replaces_file_id` | UUID | ❌ | Crée une nouvelle version |
+| `replaces_file_id` | UUID | ❌ | Crée une nouvelle version — **uniquement sur la dernière version** de la chaîne (`409` sinon) |
 
 **Catégories :**
 
@@ -406,7 +406,7 @@ storagehub_category_file_count{category="avatars"} 45
 
 | Champ | Type | Description |
 |-------|------|-------------|
-| `files` | binary[] | Plusieurs fichiers |
+| `files` | binary[] | Plusieurs fichiers — **max 200 par requête** |
 | `category` | string | `avatars` \| `kyc` \| `receipts` \| `files` |
 | `tags` | JSON string | Optionnel |
 | `folder` | string | Dossier logique commun à tous les fichiers |
@@ -456,7 +456,9 @@ storagehub_category_file_count{category="avatars"} 45
 ### `GET /v1/files` — Liste paginée
 
 **Params :** `?page=1&limit=20&sort=created_at:desc&category=avatars&folder=docs/2024&q=rapport`
-**Sort :** `created_at` \| `size_bytes` \| `mime_type` \| `category` (+ `:asc` ou `:desc`)
+**Sort :** `created_at` \| `size_bytes` \| `original_filename` \| `mime_type` \| `category` \| `version` (+ `:asc` ou `:desc` ; champ inconnu → tri par `created_at:desc`)
+
+> La liste ne retourne que la **dernière version** de chaque fichier — l'historique complet est dans `GET /v1/files/{id}/versions`.
 **Filtres :** `category` (exact) · `folder` (dossier exact, `folder=` vide = fichiers sans dossier) · `q` (recherche sur le nom de fichier)
 
 ```json
@@ -547,6 +549,8 @@ Même scoping d'accès que `GET /v1/files`.
 ### `POST /v1/files/{file_id}/replace` — Nouvelle version
 
 **Content-Type :** `multipart/form-data` · **Field :** `file`
+
+> Seule la **dernière version** d'une chaîne peut être remplacée → `409` si une version plus récente existe déjà.
 
 ```json
 // RESPONSE 201 — FileUploadResponse avec version=2

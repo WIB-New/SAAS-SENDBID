@@ -25,7 +25,8 @@ et les redistribue.
 - **Quotas par plan** — stockage, taille fichier, rate limit, bulk, webhooks appliqués côté serveur
 - **Webhooks** — livraison signée en tâche de fond, retries 0/2/10/30 s, historique des livraisons
 - **Audit trail** — journal de chaque accès sensible (qui, IP, action), rétention configurable
-- **Anti-SSRF** — `/from-url` bloque IPs privées/metadata cloud, redirections re-validées, **épinglage d'IP** anti DNS-rebinding
+- **Anti-SSRF** — `/from-url` **et webhooks** : IPs privées/metadata cloud bloquées, redirections re-validées, **épinglage d'IP** anti DNS-rebinding
+- **Clés API hachées au repos** — la base ne stocke que l'empreinte SHA-256 ; une fuite DB n'expose aucune clé utilisable
 - **Stockage pluggable** — disque local ou **S3/R2/MinIO** (`STORAGE_BACKEND`)
 - **Scalable** — rate limiting **Redis** optionnel (`REDIS_URL`), app stateless, Postgres en prod
 - **Billing** — Stripe Checkout + webhook signé (optionnel, `STRIPE_*`)
@@ -123,7 +124,7 @@ app/
 alembic/               Migrations Alembic (env + baseline)
 ui/                    Landing, dashboard, docs, integration, page de test
 sdk/                   Clients Python et JavaScript
-tests/                 pytest — 54 tests (uploads, sécurité, accès, plans, limites)
+tests/                 pytest — 68 tests (uploads, sécurité, accès, plans, limites, durcissement)
 ```
 
 ## Variables d'environnement

@@ -23,11 +23,11 @@ async def log_access(
     """Persist an audit log entry for sensitive file operations."""
     entry = models.AuditLog(
         file_id=file_id,
-        requester_user_id=requester_user_id,
-        requester_role=requester_role,
-        action=action,
-        ip_address=ip_address,
-        user_agent=user_agent,
+        requester_user_id=requester_user_id[:255],
+        requester_role=requester_role[:50],
+        action=action[:50],
+        ip_address=ip_address[:64] if ip_address else None,
+        user_agent=user_agent[:512] if user_agent else None,
         timestamp=datetime.utcnow(),
         success=success,
         details=details,

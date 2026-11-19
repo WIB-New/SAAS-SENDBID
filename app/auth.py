@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app import models
-from app.utils.security import decode_session_token
+from app.utils.security import decode_session_token, hash_api_key
 
 
 class AuthContext:
@@ -115,10 +115,10 @@ async def _resolve_api_key(
     if hmac.compare_digest(api_key, settings.api_key):
         return settings.hmac_secret, None, "internal"
 
-    # Client key in DB
+    # Client key in DB — la colonne stocke l'empreinte SHA-256, pas la clé.
     result = await db.execute(
         select(models.ApiKey).where(
-            models.ApiKey.api_key == api_key,
+            models.ApiKey.api_key == hash_api_key(api_key),
             models.ApiKey.revoked == False,
         )
     )
@@ -134,8 +134,12 @@ async def _resolve_api_key(
     if not client or not client.is_active:
         return None, None, ""
 
-    key_row.last_used_at = datetime.utcnow()
-    await db.commit()
+    # last_used_at : écriture throttlée (1×/60 s par clé) — sinon chaque
+    # requête authentifiée coûte un UPDATE en base.
+    now = datetime.utcnow()
+    if key_row.last_used_at is None or (now - key_row.last_used_at).total_seconds() > 60:
+        key_row.last_used_at = now
+        await db.commit()
     return key_row.hmac_secret, key_row.client_id, client.plan
 
 
@@ -197,8 +201,10 @@ async def get_auth_context(
             )
         is_service = False
 
-    user_id = x_user_id or "anonymous"
-    role = x_user_role or "user"
+    # Borner la longueur — les colonnes DB sont String(255)/String(50),
+    # un header plus long provoquerait une erreur 500 à l'INSERT.
+    user_id = (x_user_id or "anonymous")[:255]
+    role = (x_user_role or "user")[:50]
 
     return AuthContext(
         user_id=user_id, role=role, is_service=is_service,

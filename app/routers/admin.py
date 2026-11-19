@@ -266,7 +266,7 @@ async def get_client(client_id: str, db: AsyncSession = Depends(get_db)):
         "api_keys": [{
             "id":         k.id,
             "name":       k.name,
-            "key_prefix": k.api_key[:10] + "…",
+            "key_prefix": k.key_hint or "••••••••",
             "revoked":    k.revoked,
             "created_at": k.created_at,
             "last_used":  k.last_used_at,
