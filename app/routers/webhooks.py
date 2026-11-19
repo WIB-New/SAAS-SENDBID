@@ -5,6 +5,7 @@ GET    /v1/webhooks                  Lister ses webhooks
 DELETE /v1/webhooks/{id}             Supprimer un webhook
 GET    /v1/webhooks/{id}/deliveries  Historique des livraisons
 """
+import asyncio
 import hashlib
 import hmac
 import json
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models, schemas
 from app.auth import get_current_client
+from app.config import get_plan
 from app.database import get_db
 
 router = APIRouter(prefix="/v1/webhooks", tags=["webhooks"])
@@ -36,6 +38,11 @@ async def create_webhook(
     client: models.Client = Depends(get_current_client),
     db: AsyncSession = Depends(get_db),
 ):
+    if not get_plan(client.plan).get("webhooks", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Webhooks require the Starter plan or higher.",
+        )
     wh = models.Webhook(
         id=str(uuid.uuid4()),
         client_id=client.id,
@@ -156,13 +163,21 @@ async def fire_event(event: str, data: dict, client_id: Optional[str], db: Async
             headers["X-StorageHub-Signature"] = f"sha256={_sign_payload(payload_str, wh.secret)}"
 
         status_code, error_msg, success = None, None, False
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client_http:
-                resp = await client_http.post(wh.url, content=payload_str, headers=headers)
-                status_code = resp.status_code
-                success = 200 <= status_code < 300
-        except Exception as exc:
-            error_msg = str(exc)[:500]
+        # 2 tentatives : la seconde après un court délai
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client_http:
+                    resp = await client_http.post(wh.url, content=payload_str, headers=headers)
+                    status_code = resp.status_code
+                    success = 200 <= status_code < 300
+                    if success:
+                        break
+                    if attempt == 0:
+                        await asyncio.sleep(2)
+            except Exception as exc:
+                error_msg = str(exc)[:500]
+                if attempt == 0:
+                    await asyncio.sleep(2)
 
         delivery = models.WebhookDelivery(
             webhook_id=wh.id,

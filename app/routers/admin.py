@@ -12,11 +12,11 @@ POST /v1/admin/clients/{id}/suspend    Suspendre un compte
 POST /v1/admin/clients/{id}/activate   Réactiver un compte
 """
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, text
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
@@ -86,9 +86,12 @@ async def admin_overview(db: AsyncSession = Depends(get_db)):
         for plan_id, count in plan_distribution.items()
     )
 
-    # Activité récente (24h)
+    # Activité récente (24h) — ORM, compatible SQLite et PostgreSQL
+    cutoff = datetime.utcnow() - timedelta(hours=24)
     recent_result = await db.execute(
-        text("SELECT COUNT(*) FROM stored_files WHERE created_at >= datetime('now','-1 day')")
+        select(func.count(models.StoredFile.id)).where(
+            models.StoredFile.created_at >= cutoff
+        )
     )
     uploads_24h = recent_result.scalar() or 0
 
@@ -358,6 +361,44 @@ async def suspend_client(client_id: str, db: AsyncSession = Depends(get_db)):
     client.is_active = False
     await db.commit()
     return {"id": client_id, "is_active": False, "message": "Account suspended"}
+
+
+# ──────────────────────────────────────────────
+#  POST /v1/admin/clients/{id}/plan — Attribution d'un plan (après paiement)
+# ──────────────────────────────────────────────
+@router.post("/clients/{client_id}/plan", summary="Attribuer un plan à un client")
+async def set_client_plan(
+    client_id: str,
+    plan: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Endpoint de provisionnement : à appeler après encaissement du paiement
+    (Stripe, virement, etc.). Les clients ne peuvent pas s'auto-upgrader.
+    """
+    if plan not in PLANS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid plan. Must be one of: {', '.join(PLANS)}",
+        )
+    result = await db.execute(select(models.Client).where(models.Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    client.plan = plan
+
+    # Resynchroniser le plan snapshot sur les clés actives du client
+    keys_r = await db.execute(
+        select(models.ApiKey).where(
+            models.ApiKey.client_id == client_id,
+            models.ApiKey.revoked == False,
+        )
+    )
+    for k in keys_r.scalars().all():
+        k.plan = plan
+
+    await db.commit()
+    return {"id": client_id, "plan": plan, "plan_details": get_plan(plan)}
 
 
 # ──────────────────────────────────────────────

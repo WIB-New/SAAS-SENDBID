@@ -24,11 +24,16 @@ intègre le stockage dans son application web, mobile ou backend.
 
 ## Plans
 
-| Plan | Prix | Stockage | Clés API | TTL URL signée max |
-|------|------|----------|----------|---------------------|
-| Gratuit | 0 € | 500 MB | 1 | 60 s |
-| Pro | 19 €/mois | 50 GB | 3 | 5 min |
-| Business | 79 €/mois | 500 GB | 10 | 1 h |
+| Plan | Prix | Stockage | Clés API | TTL URL signée max | Extras |
+|------|------|----------|----------|---------------------|--------|
+| Gratuit | 0 € | 500 MB | 1 | 60 s | 20 uploads/min |
+| Starter | 5 €/mois | 2 GB | 2 | 2 min | Webhooks, 40/min |
+| Pro | 19 €/mois | 50 GB | 5 | 5 min | Bulk upload, 60/min |
+| Business | 79 €/mois | 500 GB | 20 | 1 h | 300/min, SLA |
+
+Les comptes démarrent en plan Gratuit. Les upgrades sont provisionnés par
+l'admin (`POST /v1/admin/clients/{id}/plan`, master key) après paiement —
+il n'y a pas d'auto-upgrade ni de passerelle de paiement intégrée.
 
 ## Quickstart
 
