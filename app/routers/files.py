@@ -526,7 +526,7 @@ async def upload_from_url(
 async def list_files(
     category: Optional[str] = None,
     folder: Optional[str] = Query(None, description="Filtrer par dossier (chemin exact)"),
-    q: Optional[str] = Query(None, description="Recherche sur le nom de fichier"),
+    q: Optional[str] = Query(None, max_length=200, description="Recherche sur le nom de fichier"),
     page: int = Query(1, ge=1, description="Numéro de page"),
     limit: int = Query(20, ge=1, le=100, description="Fichiers par page"),
     sort: str = Query("created_at:desc", description="Tri : champ:asc|desc"),

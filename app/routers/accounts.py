@@ -364,13 +364,20 @@ async def get_stats(
     """
     Retourne des statistiques détaillées : total fichiers, taille, uploads par jour,
     répartition par catégorie, fichiers chiffrés, thumbnails générés.
+    `date_from`/`date_to` (ISO YYYY-MM-DD) bornent la période — sans elles,
+    tout l'historique est agrégé.
     """
-    from sqlalchemy import cast, Date, and_
-    from datetime import date
+    from datetime import date as _date
 
-    base_q = select(models.StoredFile).where(
-        models.StoredFile.client_id == client.id,
-    )
+    # Filtre de période optionnel — paramètres déclarés et réellement appliqués
+    period = []
+    try:
+        if date_from:
+            period.append(func.date(models.StoredFile.created_at) >= _date.fromisoformat(date_from))
+        if date_to:
+            period.append(func.date(models.StoredFile.created_at) <= _date.fromisoformat(date_to))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date_from/date_to must be ISO dates (YYYY-MM-DD)")
 
     # Fichiers actifs
     active_result = await db.execute(
@@ -382,6 +389,7 @@ async def get_stats(
         .where(
             models.StoredFile.client_id == client.id,
             models.StoredFile.is_deleted == False,
+            *period,
         )
         .group_by(models.StoredFile.category)
     )
@@ -398,6 +406,7 @@ async def get_stats(
         select(func.count(models.StoredFile.id)).where(
             models.StoredFile.client_id == client.id,
             models.StoredFile.is_deleted == True,
+            *period,
         )
     )
     total_deleted = del_result.scalar() or 0
@@ -408,6 +417,7 @@ async def get_stats(
             models.StoredFile.client_id == client.id,
             models.StoredFile.is_encrypted == True,
             models.StoredFile.is_deleted == False,
+            *period,
         )
     )
     encrypted_count = enc_result.scalar() or 0
@@ -418,6 +428,7 @@ async def get_stats(
             models.StoredFile.client_id == client.id,
             models.StoredFile.thumbnail_path.isnot(None),
             models.StoredFile.is_deleted == False,
+            *period,
         )
     )
     thumb_count = thumb_result.scalar() or 0
@@ -432,6 +443,7 @@ async def get_stats(
         .where(
             models.StoredFile.client_id == client.id,
             models.StoredFile.is_deleted == False,
+            *period,
         )
         .group_by(func.date(models.StoredFile.created_at))
         .order_by(func.date(models.StoredFile.created_at).desc())
