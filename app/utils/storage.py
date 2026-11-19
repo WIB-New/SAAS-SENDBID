@@ -46,10 +46,10 @@ async def save_file_to_disk(
     return await get_storage_backend().save(content, relative_path)
 
 
-def delete_file_from_disk(stored_path: str) -> bool:
+async def delete_file_from_disk(stored_path: str) -> bool:
     """Delete a file via le backend configuré. Returns True if deleted."""
     from app.utils.backends import get_storage_backend
-    return get_storage_backend().delete(stored_path)
+    return await get_storage_backend().delete(stored_path)
 
 
 def generate_signed_url(file_id: str, ttl_seconds: Optional[int] = None) -> tuple[str, datetime]:
@@ -96,9 +96,21 @@ def verify_signed_url(file_id: str, expires: str, sig: str) -> bool:
     return hmac.compare_digest(expected_sig, sig)
 
 
+_DISK_CACHE_TTL = 60.0
+_disk_cache: dict = {"at": 0.0, "data": None}
+
+
 def get_disk_usage_by_category() -> dict:
-    """Return disk usage stats per category."""
+    """
+    Return disk usage stats per category.
+    La traversée rglob est O(nb fichiers) — mise en cache 60 s pour ne pas
+    bloquer /health, /v1/metrics et /v1/admin/overview à chaque appel.
+    """
     import shutil
+    now = time.time()
+    if _disk_cache["data"] is not None and now - _disk_cache["at"] < _DISK_CACHE_TTL:
+        return dict(_disk_cache["data"])
+
     result = {}
     upload_root = settings.upload_path
 
@@ -132,4 +144,5 @@ def get_disk_usage_by_category() -> dict:
     except Exception as e:
         result["_disk"] = {"error": str(e)}
 
-    return result
+    _disk_cache.update(at=now, data=result)
+    return dict(result)

@@ -57,6 +57,19 @@ def generate_api_credentials() -> tuple[str, str]:
     return f"shk_{secrets.token_hex(20)}", secrets.token_hex(32)
 
 
+def hash_api_key(api_key: str) -> str:
+    """
+    Empreinte SHA-256 d'une clé API — c'est ce qui est stocké en base.
+    Une fuite de la table api_keys n'expose plus les clés utilisables.
+    """
+    return "sha256$" + hashlib.sha256(api_key.encode()).hexdigest()
+
+
+def api_key_hint(api_key: str) -> str:
+    """Forme masquée affichable : 'shk_ab12…wxyz'."""
+    return f"{api_key[:10]}…{api_key[-4:]}" if len(api_key) > 14 else "…"
+
+
 def create_session_token(client_id: str) -> str:
     payload = {
         "sub": client_id,

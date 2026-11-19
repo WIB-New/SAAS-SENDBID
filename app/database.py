@@ -78,4 +78,23 @@ async def init_db():
                         text("ALTER TABLE webhook_deliveries ADD COLUMN attempts INTEGER DEFAULT 1")
                     )
 
+            # ── api_keys : hachage des clés existantes ────
+            if "api_keys" in tables:
+                ak_cols = {c["name"] for c in insp.get_columns("api_keys")}
+                if "key_hint" not in ak_cols:
+                    sync_conn.execute(
+                        text("ALTER TABLE api_keys ADD COLUMN key_hint VARCHAR(64)")
+                    )
+                # Convertir les clés en clair → empreinte SHA-256 + hint.
+                rows = sync_conn.execute(
+                    text("SELECT id, api_key FROM api_keys WHERE api_key NOT LIKE 'sha256$%'")
+                ).fetchall()
+                if rows:
+                    from app.utils.security import hash_api_key, api_key_hint
+                    for row_id, raw_key in rows:
+                        sync_conn.execute(
+                            text("UPDATE api_keys SET api_key = :h, key_hint = :hint WHERE id = :id"),
+                            {"h": hash_api_key(raw_key), "hint": api_key_hint(raw_key), "id": row_id},
+                        )
+
         await conn.run_sync(_migrate)

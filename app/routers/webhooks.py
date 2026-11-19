@@ -13,6 +13,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,9 +24,41 @@ from app import models, schemas
 from app.auth import get_current_client
 from app.config import get_plan
 from app.database import get_db
+from app.utils.url_safety import resolve_pinned_url
 
 router = APIRouter(prefix="/v1/webhooks", tags=["webhooks"])
 logger = logging.getLogger("storagehub.webhooks")
+
+# Références fortes sur les tâches de livraison — asyncio.create_task()
+# sans référence peut être garbage-collecté avant son exécution.
+_background_tasks: set = set()
+
+
+def _spawn(coro):
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+
+async def _validate_webhook_url(url: str):
+    """
+    Anti-SSRF : un webhook doit pointer vers un endpoint public.
+    L'épinglage d'IP à la livraison reste la barrière effective — ici on
+    rejette dès l'enregistrement les formats invalides et les IPs privées
+    quand le DNS est joignable (fail-open si le DNS est indisponible).
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise HTTPException(status_code=400, detail="Webhook URL must be a valid http(s):// URL")
+    try:
+        await resolve_pinned_url(url)
+    except HTTPException as exc:
+        # Fail-open uniquement si le DNS est INJOIGNABLE ("Cannot resolve
+        # remote host") — une IP privée/réservée doit rejeter même à
+        # l'enregistrement. La livraison re-vérifiera de toute façon.
+        if "cannot resolve" in str(exc.detail).lower():
+            return
+        raise
 
 
 # ──────────────────────────────────────────────
@@ -43,6 +76,7 @@ async def create_webhook(
             status_code=403,
             detail="Webhooks require the Starter plan or higher.",
         )
+    await _validate_webhook_url(body.url)
     wh = models.Webhook(
         id=str(uuid.uuid4()),
         client_id=client.id,
@@ -151,11 +185,24 @@ async def _deliver_webhook(wh_id: str, wh_url: str, wh_secret: Optional[str],
                 await asyncio.sleep(delay)
             attempts = i + 1
             try:
-                resp = await client_http.post(wh_url, content=payload_str, headers=headers)
+                # Épinglage d'IP à CHAQUE tentative : l'hôte est re-résolu et
+                # re-validé — un rebinding DNS vers une IP privée entre
+                # l'enregistrement et la livraison est bloqué.
+                pinned = await resolve_pinned_url(wh_url)
+                req_headers = dict(headers)
+                req_headers["Host"] = pinned["headers"]["Host"]
+                kwargs = {"extensions": {"sni_hostname": pinned["sni_hostname"]}} \
+                    if pinned["sni_hostname"] else {}
+                resp = await client_http.post(
+                    pinned["url"], content=payload_str,
+                    headers=req_headers, **kwargs,
+                )
                 status_code = resp.status_code
                 success = 200 <= status_code < 300
                 if success:
                     break
+            except HTTPException as exc:
+                error_msg = str(exc.detail)[:500]
             except Exception as exc:
                 error_msg = str(exc)[:500]
 
@@ -205,6 +252,4 @@ async def fire_event(event: str, data: dict, client_id: Optional[str], db: Async
 
     for wh in webhooks:
         if wh.listens_to(event):
-            asyncio.create_task(
-                _deliver_webhook(wh.id, wh.url, wh.secret, event, payload_str)
-            )
+            _spawn(_deliver_webhook(wh.id, wh.url, wh.secret, event, payload_str))

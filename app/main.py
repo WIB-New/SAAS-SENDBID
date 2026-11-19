@@ -194,7 +194,9 @@ else:
 # ── Auth admin (master key) ────────────────────────────────────────────────────
 from fastapi import Header, HTTPException as _HTE
 async def _master_key_dep(x_api_key: str = Header(..., alias="X-API-Key")):
-    if x_api_key != settings.api_key:
+    import hmac as _hmac
+    # Comparaison à temps constant — éviter l'oracle de timing sur la clé maître.
+    if not _hmac.compare_digest(x_api_key, settings.api_key):
         raise _HTE(status_code=403, detail="Admin access requires the master API key")
 
 # ── Routers ────────────────────────────────────────────────────────────────────
@@ -227,6 +229,11 @@ async def add_integration_headers(request: Request, call_next):
     response.headers["X-Service-Version"] = "2.0.0"
     response.headers["X-Response-Time"]   = f"{elapsed_ms}ms"
 
+    # Headers de sécurité globaux (API + UI)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"]        = "SAMEORIGIN"
+    response.headers["Referrer-Policy"]        = "no-referrer"
+
     if not settings.is_production and request.url.path.startswith("/ui"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"]        = "no-cache"
@@ -246,6 +253,10 @@ async def root():
 
 @app.get("/test", include_in_schema=False)
 async def test_ui():
+    # La console de test n'est servie qu'en développement — en production
+    # elle exposerait un client API complet à tout visiteur.
+    if settings.is_production:
+        return JSONResponse(status_code=404, content={"error": "not found"})
     test_page = os.path.join(ui_path, "test.html")
     if os.path.exists(test_page):
         return FileResponse(test_page)

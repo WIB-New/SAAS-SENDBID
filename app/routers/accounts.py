@@ -16,15 +16,19 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.auth import get_current_client, get_client_from_api_key
 from app.config import PLANS, get_plan
 from app.database import get_db
+from app.ratelimit import RateLimit
 from app.utils.security import (
+    api_key_hint,
     create_session_token,
     generate_api_credentials,
+    hash_api_key,
     hash_password,
     verify_password,
 )
@@ -79,11 +83,13 @@ async def _usage(db: AsyncSession, client_id: str) -> dict:
     }
 
 
-def _key_out(k: models.ApiKey, reveal: bool = False) -> dict:
+def _key_out(k: models.ApiKey, reveal: bool = False, plain_key: Optional[str] = None) -> dict:
     return {
         "id": k.id,
         "name": k.name,
-        "api_key": k.api_key if reveal else k.api_key[:10] + "…" + k.api_key[-4:],
+        # La colonne api_key contient l'empreinte SHA-256 — la clé en clair
+        # n'existe qu'au moment de la création (reveal=True, plain_key).
+        "api_key": plain_key if reveal else (k.key_hint or "••••••••"),
         "hmac_secret": k.hmac_secret if reveal else "••••••••",
         "plan": k.plan,
         "revoked": k.revoked,
@@ -132,6 +138,7 @@ async def list_plans():
     "/v1/accounts/register",
     status_code=201,
     summary="Créer un compte — retourne les credentials API (affichés une seule fois)",
+    dependencies=[Depends(RateLimit("register", max_calls=20, period=60))],
 )
 async def register(body: RegisterIn, db: AsyncSession = Depends(get_db)):
     email = body.email.strip().lower()
@@ -161,12 +168,20 @@ async def register(body: RegisterIn, db: AsyncSession = Depends(get_db)):
         id=str(uuid.uuid4()),
         client_id=client.id,
         name="Clé principale",
-        api_key=api_key,
+        api_key=hash_api_key(api_key),   # empreinte, jamais la clé en clair
+        key_hint=api_key_hint(api_key),
         hmac_secret=hmac_secret,
         plan=plan_id,
     )
     db.add(key)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Race condition : deux inscriptions simultanées du même email —
+        # le SELECT ci-dessus peut laisser passer un doublon avant le
+        # verrou d'unicité. On renvoie 409, pas 500.
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
 
     token = create_session_token(client.id)
     return {
@@ -184,7 +199,13 @@ async def register(body: RegisterIn, db: AsyncSession = Depends(get_db)):
 
 
 # ── Login ──
-@router.post("/v1/accounts/login", summary="Connexion dashboard — retourne un JWT")
+# Hash pré-calculé pour égaliser le temps de réponse quand l'email n'existe
+# pas (évite l'énumération des comptes par timing).
+_DUMMY_HASH = hash_password("dummy-password")
+
+
+@router.post("/v1/accounts/login", summary="Connexion dashboard — retourne un JWT",
+             dependencies=[Depends(RateLimit("login", max_calls=10, period=60))])
 async def login(body: LoginIn, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(models.Client).where(
@@ -192,7 +213,10 @@ async def login(body: LoginIn, db: AsyncSession = Depends(get_db)):
         )
     )
     client = result.scalar_one_or_none()
-    if not client or not verify_password(body.password, client.password_hash):
+    if not client:
+        verify_password(body.password, _DUMMY_HASH)  # constant-time
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not verify_password(body.password, client.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not client.is_active:
         raise HTTPException(status_code=403, detail="Account disabled")
@@ -246,14 +270,15 @@ async def create_key(
         id=str(uuid.uuid4()),
         client_id=client.id,
         name=body.name.strip() or "API key",
-        api_key=api_key,
+        api_key=hash_api_key(api_key),
+        key_hint=api_key_hint(api_key),
         hmac_secret=hmac_secret,
         plan=client.plan,
     )
     db.add(key)
     await db.commit()
     return {
-        **_key_out(key, reveal=True),
+        **_key_out(key, reveal=True, plain_key=api_key),
         "warning": "Le hmac_secret n'est affiché qu'une seule fois.",
     }
 
@@ -301,6 +326,18 @@ async def change_plan(
             ),
         )
     client.plan = body.plan
+
+    # Resynchroniser le snapshot plan des clés actives — sinon une rétro-
+    # gradation laisserait les clés avec les privilèges de l'ancien plan.
+    keys_r = await db.execute(
+        select(models.ApiKey).where(
+            models.ApiKey.client_id == client.id,
+            models.ApiKey.revoked == False,
+        )
+    )
+    for k in keys_r.scalars().all():
+        k.plan = body.plan
+
     await db.commit()
     return {"plan": client.plan, "plan_details": get_plan(client.plan)}
 

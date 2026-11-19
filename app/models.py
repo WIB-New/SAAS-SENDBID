@@ -51,6 +51,7 @@ class ApiKey(Base):
     name:        Mapped[str]          = mapped_column(String(120), nullable=False, default="Default key")
     api_key:     Mapped[str]          = mapped_column(String(80),  nullable=False, unique=True, index=True)
     hmac_secret: Mapped[str]          = mapped_column(String(128), nullable=False)
+    key_hint:    Mapped[str|None]     = mapped_column(String(64),  nullable=True)  # forme masquée affichable
     plan:        Mapped[str]          = mapped_column(String(30),  nullable=False, default="free")
     revoked:     Mapped[bool]         = mapped_column(Boolean,     default=False, nullable=False)
     created_at:  Mapped[datetime]     = mapped_column(DateTime,    server_default=func.now(), nullable=False)

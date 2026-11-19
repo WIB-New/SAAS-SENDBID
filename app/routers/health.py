@@ -37,8 +37,10 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         checks["database"] = {"status": "ok", "latency_ms": None}
         db_status = "ok"
     except Exception as e:
-        checks["database"] = {"status": "error", "detail": str(e)}
-        db_status = f"error: {e}"
+        # Le détail interne (DSN, stack) n'est exposé qu'en développement.
+        detail = str(e) if not settings.is_production else "unavailable"
+        checks["database"] = {"status": "error", "detail": detail}
+        db_status = f"error: {detail}"
 
     # ── Check disk
     disk_data = get_disk_usage_by_category()

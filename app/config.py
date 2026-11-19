@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     # Rate limiting distribué (optionnel — sinon compteurs en mémoire)
     redis_url: str = ""            # ex: redis://localhost:6379/0
 
+    # Proxy de confiance pour X-Forwarded-For (rate limiting par IP).
+    # CSV d'IPs du/des reverse-proxy frontaux ("*" = tous — uniquement si
+    # le service n'est JAMAIS exposé directement).
+    trusted_proxy: str = ""
+
     # Rétention des journaux d'audit (jours)
     audit_retention_days: int = 365
 

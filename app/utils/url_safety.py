@@ -26,7 +26,7 @@ def _ip_forbidden(ip) -> bool:
 
 
 async def _resolve_ips(host: str) -> set[str]:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     infos = await loop.getaddrinfo(host, None, type=socket.SOCK_STREAM)
     return {info[4][0] for info in infos}
 
@@ -89,15 +89,21 @@ async def resolve_pinned_url(url: str) -> dict:
     ip = sorted(ips)[0]
     # IPv6 doit être encadrée de crochets dans une URL
     netloc = f"[{ip}]" if ":" in ip else ip
-    port = parsed.port
-    if port and port not in (80, 443):
+    try:
+        port = parsed.port   # lève ValueError sur port invalide/hors bornes
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid URL: bad port")
+    default_port = 443 if parsed.scheme == "https" else 80
+    # Conserver le port explicite sauf s'il est déjà le défaut du schéma —
+    # avant, http://h:443 était réécrit sans port → connexion sur :80.
+    if port and port != default_port:
         netloc = f"{netloc}:{port}"
 
     path = parsed.path or "/"
     if parsed.query:
         path = f"{path}?{parsed.query}"
 
-    host_header = host if not port or port in (80, 443) else f"{host}:{port}"
+    host_header = host if not port or port == default_port else f"{host}:{port}"
     return {
         "url": f"{parsed.scheme}://{netloc}{path}",
         "headers": {"Host": host_header},
