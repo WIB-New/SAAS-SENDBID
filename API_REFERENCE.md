@@ -973,7 +973,7 @@ def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
 | `GET /ui` | Landing page |
 | `GET /ui/dashboard.html` | Dashboard client (login JWT) |
 | `GET /integration` | Dashboard intégrateur |
-| `GET /test` | Suite de tests API |
+| `GET /test` | Suite de tests API (dev uniquement — 404 en prod) |
 | `GET /docs` | Swagger UI |
 | `GET /redoc` | ReDoc |
 
@@ -999,8 +999,9 @@ def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
 
 ### `POST /v1/billing/webhook` — Réception Stripe (interne)
 
-Endpoint appelé par Stripe (`checkout.session.completed`) — signature
-`Stripe-Signature` vérifiée, provisionne le plan payé automatiquement.
+Endpoint appelé par Stripe — signature `Stripe-Signature` vérifiée.
+Événements traités : `checkout.session.completed` (provisionne le plan payé)
+et `customer.subscription.deleted` (rétrogradation automatique en `free`).
 Non destiné aux clients API.
 
 ---
@@ -1013,7 +1014,7 @@ Non destiné aux clients API.
 | `GET /ui` | Landing page |
 | `GET /ui/dashboard.html` | Dashboard client (login JWT) |
 | `GET /integration` | Dashboard intégrateur |
-| `GET /test` | Suite de tests API |
+| `GET /test` | Suite de tests API (dev uniquement — 404 en prod) |
 | `GET /docs` | Swagger UI |
 | `GET /redoc` | ReDoc |
 

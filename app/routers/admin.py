@@ -28,14 +28,8 @@ router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 _start_time = time.time()
 
-
-async def _require_master_key(db: AsyncSession = Depends(get_db)):
-    """
-    Ce router ne passe pas par le système de clés client —
-    il est monté en second dans main.py avec la dépendance master key.
-    Cette fonction est appelée depuis les dépendances de chaque endpoint.
-    """
-    pass  # L'auth est vérifiée dans main.py via _admin_auth_dep
+# L'auth de ce router est montée globalement dans main.py via _master_key_dep
+# (comparaison à temps constant). Aucune clé client n'y a accès.
 
 
 # ──────────────────────────────────────────────

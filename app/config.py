@@ -2,7 +2,7 @@
 StorageHub — Storage Service Configuration
 """
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -69,9 +69,7 @@ class Settings(BaseSettings):
     stripe_price_pro:      str = ""
     stripe_price_business: str = ""
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property
     def upload_path(self) -> Path:

@@ -6,7 +6,7 @@ GET /v1/metrics    — métriques format Prometheus
 GET /v1/info       — informations de service pour intégration
 """
 import time
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,8 +80,16 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     summary="Métriques format Prometheus",
     tags=["monitoring"],
 )
-async def metrics():
+async def metrics(request: Request):
     """Métriques compatibles Prometheus/Grafana."""
+    # En production, les métriques internes (disque, volumétrie par
+    # catégorie) ne sont pas publiques : master key requise.
+    if settings.is_production:
+        import hmac as _hmac
+        key = request.headers.get("x-api-key", "")
+        if not _hmac.compare_digest(key, settings.api_key):
+            raise HTTPException(status_code=403, detail="Metrics require the master API key")
+
     disk_data = get_disk_usage_by_category()
     disk_info = disk_data.pop("_disk", {})
 

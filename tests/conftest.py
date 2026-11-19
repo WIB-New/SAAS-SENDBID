@@ -1,7 +1,6 @@
 """
 StorageHub — Test configuration and fixtures
 """
-import asyncio
 import io
 import os
 import struct
@@ -81,11 +80,7 @@ def make_minimal_pdf() -> bytes:
     )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+
 
 
 @pytest_asyncio.fixture(scope="function")
