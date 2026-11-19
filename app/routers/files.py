@@ -18,7 +18,7 @@ DELETE /v1/files/{file_id}                    Suppression logique
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.utils.time import utcnow
 from typing import Optional
 from urllib.parse import quote, urljoin
@@ -39,7 +39,7 @@ from app.database import get_db
 from app.ratelimit import bulk_limit, url_limit, plan_upload_limit, global_limit
 from app.utils.audit import log_access
 from app.utils.encryption import decrypt_bytes, encrypt_bytes, should_encrypt, looks_encrypted
-from app.utils.file_validation import validate_upload, prevent_path_traversal, validate_category, sanitize_folder
+from app.utils.file_validation import validate_upload, validate_content, prevent_path_traversal, validate_category, sanitize_folder
 from app.utils.image_processing import strip_exif_and_reencode
 from app.utils.storage import (
     generate_signed_url,
@@ -620,6 +620,320 @@ async def list_folders(
                            total_bytes=row.total_bytes)
         for row in result.all()
     ]
+
+
+# ──────────────────────────────────────────────
+#  Upload multipart — gros fichiers, reprise possible
+#
+#  POST /v1/files/multipart/init                    ouvre une session
+#  PUT  /v1/files/multipart/{id}/parts/{n}          pousse la part n (corps brut)
+#  GET  /v1/files/multipart/{id}                    état + parts reçues (reprise)
+#  POST /v1/files/multipart/{id}/complete           assemble + valide + stocke
+#  DELETE /v1/files/multipart/{id}                  abandonne et nettoie
+# ──────────────────────────────────────────────
+
+def _mp_part_path(upload_id: str, part_number: int) -> str:
+    return f".multipart/{upload_id}/part-{part_number}"
+
+
+async def _get_session_or_404(
+    db: AsyncSession, upload_id: str, auth: AuthContext
+) -> models.MultipartUpload:
+    r = await db.execute(
+        select(models.MultipartUpload).where(models.MultipartUpload.id == upload_id)
+    )
+    s = r.scalar_one_or_none()
+    if not s:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    # Même modèle d'accès que les fichiers : tenant + owner (admin tenant ok)
+    if not auth.can_access_file(s.owner_user_id, s.client_id):
+        raise HTTPException(status_code=403, detail="Access denied: not your upload session")
+    if s.status != "active":
+        raise HTTPException(status_code=409, detail=f"Upload session is {s.status}")
+    if s.expires_at < utcnow():
+        s.status = "aborted"
+        await db.commit()
+        raise HTTPException(status_code=410, detail="Upload session expired")
+    return s
+
+
+async def _cleanup_session_parts(
+    db: AsyncSession, session: models.MultipartUpload
+):
+    """Supprime les objets parts du stockage puis les lignes en base."""
+    from app.utils.storage import delete_file_from_disk
+    r = await db.execute(
+        select(models.MultipartPart).where(
+            models.MultipartPart.upload_id == session.id
+        )
+    )
+    for part in r.scalars().all():
+        await delete_file_from_disk(part.stored_path)
+        await db.delete(part)
+
+
+@router.post("/multipart/init", response_model=schemas.MultipartInitResponse,
+             status_code=201, summary="Ouvrir une session d'upload multipart")
+async def multipart_init(
+    payload: schemas.MultipartInitRequest,
+    _rl=Depends(plan_upload_limit),
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Pour les fichiers volumineux ou les réseaux instables : upload en N parts
+    (PUT corps brut), puis /complete assemble. La session expire après
+    MULTIPART_SESSION_HOURS — GET /multipart/{id} permet de reprendre.
+    Les mêmes limites (catégorie, plan, AV) s'appliquent au fichier assemblé.
+    """
+    validate_category(payload.category)
+    _check_tags_size(payload.tags)
+
+    part_size = payload.part_size or settings.multipart_part_size_mb * 1024 * 1024
+    if part_size > settings.multipart_max_size_mb * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="part_size too large")
+
+    # Check anticipé si la taille totale est connue — économise des parts
+    # inutiles quand le quota ou la limite du plan serait de toute façon dépassé.
+    if payload.total_size and auth.client_id:
+        _check_file_size(auth, payload.total_size)
+        if payload.total_size > settings.multipart_max_size_mb * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large: exceeds multipart cap of {settings.multipart_max_size_mb} MB",
+            )
+        await _check_quota(db, auth, payload.total_size)
+
+    session = models.MultipartUpload(
+        client_id=auth.client_id,
+        owner_user_id=auth.user_id,
+        category=payload.category,
+        original_filename=prevent_path_traversal(payload.filename)[:512] or "file",
+        folder=sanitize_folder(payload.folder) if payload.folder else None,
+        tags=payload.tags,
+        mime_hint=payload.mime_hint,
+        part_size=part_size,
+        expires_at=utcnow() + timedelta(hours=settings.multipart_session_hours),
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    return schemas.MultipartInitResponse(
+        upload_id=session.id,
+        part_size=session.part_size,
+        max_parts=settings.multipart_max_parts,
+        expires_at=session.expires_at,
+        put_part_url=f"/v1/files/multipart/{session.id}/parts/{{part_number}}",
+        complete_url=f"/v1/files/multipart/{session.id}/complete",
+    )
+
+
+@router.put("/multipart/{upload_id}/parts/{part_number}",
+            response_model=schemas.MultipartPartInfo,
+            dependencies=[Depends(global_limit)],
+            summary="Pousser une part (corps brut, re-jouable)")
+async def multipart_put_part(
+    upload_id: str,
+    part_number: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Corps = bytes de la part (Content-Type: application/octet-stream).
+    Une part peut être re-poussée (idempotent) — la précédente est remplacée.
+    """
+    if not (1 <= part_number <= settings.multipart_max_parts):
+        raise HTTPException(status_code=400, detail="part_number out of range")
+    session = await _get_session_or_404(db, upload_id, auth)
+
+    # Lecture chunked avec abort précoce — même pattern que validate_upload
+    max_bytes = session.part_size
+    chunks, total = [], 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Part exceeds part_size of {max_bytes} bytes",
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty part not allowed")
+
+    # Part déjà présente → remplacer l'objet stocké (re-upload idempotent)
+    r = await db.execute(
+        select(models.MultipartPart).where(
+            models.MultipartPart.upload_id == session.id,
+            models.MultipartPart.part_number == part_number,
+        )
+    )
+    existing = r.scalar_one_or_none()
+    if existing:
+        from app.utils.storage import delete_file_from_disk
+        await delete_file_from_disk(existing.stored_path)
+        await db.delete(existing)
+        await db.flush()
+
+    stored_path = _mp_part_path(session.id, part_number)
+    from app.utils.backends import get_storage_backend
+    await get_storage_backend().save(content, stored_path)
+
+    part = models.MultipartPart(
+        upload_id=session.id,
+        part_number=part_number,
+        size_bytes=len(content),
+        checksum_sha256=compute_sha256(content),
+        stored_path=stored_path,
+    )
+    db.add(part)
+    await db.commit()
+
+    return schemas.MultipartPartInfo(
+        part_number=part_number,
+        size_bytes=len(content),
+        etag=part.checksum_sha256,
+    )
+
+
+@router.get("/multipart/{upload_id}",
+            response_model=schemas.MultipartStatusResponse,
+            summary="État d'une session multipart (reprise)")
+async def multipart_status(
+    upload_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    session = await _get_session_or_404(db, upload_id, auth)
+    r = await db.execute(
+        select(models.MultipartPart)
+        .where(models.MultipartPart.upload_id == session.id)
+        .order_by(models.MultipartPart.part_number)
+    )
+    parts = r.scalars().all()
+    return schemas.MultipartStatusResponse(
+        upload_id=session.id,
+        status=session.status,
+        filename=session.original_filename,
+        category=session.category,
+        folder=session.folder,
+        part_size=session.part_size,
+        parts_received=len(parts),
+        total_bytes=sum(p.size_bytes for p in parts),
+        parts=[schemas.MultipartPartInfo(
+            part_number=p.part_number, size_bytes=p.size_bytes,
+            etag=p.checksum_sha256, uploaded_at=p.created_at,
+        ) for p in parts],
+        expires_at=session.expires_at,
+    )
+
+
+@router.post("/multipart/{upload_id}/complete",
+             response_model=schemas.FileUploadResponse, status_code=201,
+             summary="Assembler les parts → fichier final")
+async def multipart_complete(
+    upload_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Assemble les parts 1..N (contiguës, checksum vérifié), applique le même
+    pipeline qu'un upload normal (AV, MIME, EXIF, chiffrement) puis stocke.
+    """
+    session = await _get_session_or_404(db, upload_id, auth)
+
+    r = await db.execute(
+        select(models.MultipartPart)
+        .where(models.MultipartPart.upload_id == session.id)
+        .order_by(models.MultipartPart.part_number)
+    )
+    parts = r.scalars().all()
+    if not parts:
+        raise HTTPException(status_code=400, detail="No parts uploaded")
+
+    # Parts contiguës 1..N requises (contract simple — GET status pour reprendre)
+    numbers = [p.part_number for p in parts]
+    if numbers != list(range(1, len(parts) + 1)):
+        missing = sorted(set(range(1, numbers[-1] + 1)) - set(numbers))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Parts must be contiguous from 1 — missing: {missing[:10]}",
+        )
+
+    # Assemblage + vérification d'intégrité de chaque part
+    from app.utils.backends import get_storage_backend
+    backend = get_storage_backend()
+    buffers = []
+    for p in parts:
+        data = await backend.read(p.stored_path)
+        if compute_sha256(data) != p.checksum_sha256:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Part {p.part_number} corrupted (checksum mismatch) — re-upload it",
+            )
+        buffers.append(data)
+    content = b"".join(buffers)
+
+    # Limites : catégorie, plan, plafond absolu multipart
+    max_bytes = min(
+        settings.max_sizes_bytes[session.category],
+        settings.multipart_max_size_mb * 1024 * 1024,
+    )
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Assembled file too large: exceeds {max_bytes // 1024 // 1024} MB",
+        )
+    if auth.client_id:
+        _check_file_size(auth, len(content))
+        await _check_quota(db, auth, len(content))
+
+    mime_type = validate_content(content, session.category)
+
+    result = await _do_upload(
+        content, mime_type, session.category, session.original_filename,
+        auth, db, session.tags, folder=session.folder,
+        owner_user_id=session.owner_user_id,
+    )
+
+    # Succès → nettoyage session + parts
+    session.status = "completed"
+    await _cleanup_session_parts(db, session)
+    await db.commit()
+
+    await log_access(
+        db, result.file_id, auth.user_id, auth.role, "upload",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details=f"multipart parts={len(parts)}",
+    )
+
+    try:
+        from app.routers.webhooks import fire_event
+        await fire_event("file.uploaded", {
+            "file_id": result.file_id, "category": session.category, "size": result.size
+        }, auth.client_id, db)
+    except Exception:
+        pass
+
+    return result
+
+
+@router.delete("/multipart/{upload_id}",
+               summary="Abandonner une session multipart")
+async def multipart_abort(
+    upload_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    session = await _get_session_or_404(db, upload_id, auth)
+    session.status = "aborted"
+    await _cleanup_session_parts(db, session)
+    await db.commit()
+    return {"upload_id": upload_id, "status": "aborted", "parts_deleted": True}
 
 
 # ──────────────────────────────────────────────

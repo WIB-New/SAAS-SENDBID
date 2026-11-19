@@ -343,6 +343,7 @@
 
         <div class="btns">
           <button class="btn btn-primary" id="upBtn" onclick="doUpload()" disabled>📤 Envoyer</button>
+          <button class="btn btn-ghost" id="mpBtn" onclick="doMultipart()" disabled>🧩 Multipart</button>
           <button class="btn btn-ghost" onclick="document.getElementById('fdir').click()">📁 Dossier…</button>
           <button class="btn btn-ghost" onclick="genFile()">🔧 Générer fichier test</button>
         </div>
@@ -575,8 +576,9 @@ function showChip(f){
   document.getElementById('fchipSize').textContent=`${(f.size/1024).toFixed(1)} KB — ${f.type||'?'}`;
   document.getElementById('fchip').style.display='flex';
   document.getElementById('upBtn').disabled=false;
+  document.getElementById('mpBtn').disabled=false;
 }
-function clearFile(){ selFile=null; document.getElementById('fi').value=''; document.getElementById('fchip').style.display='none'; document.getElementById('upBtn').disabled=true; }
+function clearFile(){ selFile=null; document.getElementById('fi').value=''; document.getElementById('fchip').style.display='none'; document.getElementById('upBtn').disabled=true; document.getElementById('mpBtn').disabled=true; }
 
 async function doUpload(){
   if(!selFile) return;
@@ -595,6 +597,44 @@ async function doUpload(){
     toast(r.ok?`Fichier uploadé — ${d.file_id?.substring(0,8)}…`:`Erreur ${r.status}`,r.ok?'ok':'err');
   }catch(e){ clearInterval(iv); showR('upResp',0,{error:e.message},'err'); toast('Connexion impossible','err'); }
   finally{ setTimeout(()=>{pw.style.display='none';pb.style.width='0'},900); btn.disabled=false; btn.innerHTML='📤 Envoyer'; }
+}
+
+// Upload multipart : découpe le fichier en parts de 8 Mo (init → PUT parts →
+// complete). Chaque part est une requête PUT indépendante — re-jouable.
+async function doMultipart(){
+  if(!selFile) return;
+  const btn=document.getElementById('mpBtn');
+  const pw=document.getElementById('pWrap'), pb=document.getElementById('pBar');
+  const uid=document.getElementById('upUid').value||C.uid;
+  btn.disabled=true; btn.innerHTML='🧩 Parts…'; pw.style.display='block';
+  const PART=8*1024*1024, total=selFile.size;
+  try{
+    // 1. Session
+    const init=await fetch(`${C.url}/v1/files/multipart/init`,{method:'POST',
+      headers:{...h(uid),'Content-Type':'application/json'},
+      body:JSON.stringify({filename:selFile.name,category:selCat,total_size:total,part_size:PART,mime_hint:selFile.type||null})});
+    const sess=await init.json();
+    if(!init.ok){ showR('upResp',init.status,sess); toast(`Init multipart : erreur ${init.status}`,'err'); return; }
+    const uidp=sess.upload_id;
+    // 2. Parts successives
+    const nParts=Math.max(1,Math.ceil(total/PART));
+    for(let n=1;n<=nParts;n++){
+      const blob=selFile.slice((n-1)*PART,Math.min(n*PART,total));
+      const pr=await fetch(`${C.url}/v1/files/multipart/${uidp}/parts/${n}`,{method:'PUT',
+        headers:{...h(uid),'Content-Type':'application/octet-stream'},body:blob});
+      const pd=await pr.json();
+      if(!pr.ok){ showR('upResp',pr.status,{part:n,...pd}); toast(`Part ${n} : erreur ${pr.status}`,'err'); return; }
+      pb.style.width=Math.round(n/nParts*92)+'%';
+      btn.innerHTML=`🧩 ${n}/${nParts}`;
+    }
+    // 3. Assemblage
+    const cr=await fetch(`${C.url}/v1/files/multipart/${uidp}/complete`,{method:'POST',headers:h(uid)});
+    const cd=await cr.json();
+    pb.style.width='100%';
+    showR('upResp',cr.status,{...cd,multipart:{session:uidp,parts:nParts}});
+    toast(cr.ok?`Multipart OK — ${nParts} part(s) assemblée(s)`:`Complete : erreur ${cr.status}`,cr.ok?'ok':'err');
+  }catch(e){ showR('upResp',0,{error:e.message},'err'); toast('Connexion impossible','err'); }
+  finally{ setTimeout(()=>{pw.style.display='none';pb.style.width='0'},900); btn.disabled=false; btn.innerHTML='🧩 Multipart'; }
 }
 
 // Upload de dossier : chaque fichier part sur /v1/files avec son chemin relatif

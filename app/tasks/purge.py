@@ -119,6 +119,44 @@ async def purge_legacy_plaintext_thumbnails() -> int:
     return cleaned
 
 
+async def purge_expired_multipart() -> int:
+    """
+    Nettoie les sessions multipart expirées ou abandonnées : supprime les
+    objets parts du stockage puis les lignes en base. Retourne le nombre
+    de sessions purgées.
+    """
+    from sqlalchemy import select
+    from app.database import AsyncSessionLocal
+    from app.models import MultipartPart, MultipartUpload
+    from app.utils.backends import get_storage_backend
+
+    storage = get_storage_backend()
+    purged = 0
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(MultipartUpload).where(
+                (MultipartUpload.expires_at < utcnow())
+                | (MultipartUpload.status == "aborted")
+            )
+        )
+        for mp in result.scalars():
+            try:
+                parts = await session.execute(
+                    select(MultipartPart).where(MultipartPart.upload_id == mp.id)
+                )
+                for p in parts.scalars():
+                    await storage.delete(p.stored_path)
+                    await session.delete(p)
+                await session.delete(mp)
+                purged += 1
+            except Exception as exc:
+                logger.error(f"[PURGE] Error purging multipart session {mp.id}: {exc}")
+        await session.commit()
+    if purged:
+        logger.info(f"[PURGE] {purged} expired/aborted multipart session(s) cleaned")
+    return purged
+
+
 def start_scheduler() -> AsyncIOScheduler:
     """Démarre le planificateur de tâches en arrière-plan."""
     scheduler = AsyncIOScheduler(timezone="UTC")
@@ -137,6 +175,14 @@ def start_scheduler() -> AsyncIOScheduler:
         hour=3,
         minute=30,
         id="audit_retention",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        purge_expired_multipart,
+        trigger="cron",
+        minute=15,                      # toutes les heures
+        id="multipart_cleanup",
         replace_existing=True,
         misfire_grace_time=3600,
     )

@@ -20,6 +20,7 @@ et les redistribue.
 - **Auth service-to-service** — `X-API-Key` + `X-Timestamp` + `X-Signature` (HMAC-SHA256, anti-rejeu 30 s)
 - **4 catégories** — `avatars` (public, cache CDN) · `kyc` et `receipts` (privés, chiffrés AES-256-GCM par tenant, audités) · `files` (générique : tout type sauf exécutables, privé)
 - **Dossiers logiques** — champ `folder` sur chaque upload, arborescence via `GET /v1/files/folders`, filtres `?folder=` et `?q=`
+- **Upload multipart** — gros fichiers en parts de 8 Mo (`init` → `PUT parts` → `complete`), re-jouables, session persistée 24 h, même pipeline de sécurité au final
 - **Sécurité fichiers** — MIME par magic bytes, antivirus (EICAR/exécutables/PDF-JS), purge EXIF, anti path-traversal, lecture chunkée avec abort précoce
 - **URLs signées** — partage temporaire de fichiers privés, TTL plafonné par plan, secret dédié dérivé
 - **Quotas par plan** — stockage, taille fichier, rate limit, bulk, webhooks appliqués côté serveur
@@ -79,6 +80,31 @@ curl -H "X-API-Key: VOTRE_CLE" "http://localhost:8000/v1/files?folder=clients/20
 curl -H "X-API-Key: VOTRE_CLE" "http://localhost:8000/v1/files/{file_id}/signed?ttl=60"
 ```
 
+### 4. Gros fichier en multipart (reprise possible)
+
+```bash
+# 1. Ouvrir la session
+curl -X POST http://localhost:8000/v1/files/multipart/init \
+  -H "X-API-Key: VOTRE_CLE" -H "Content-Type: application/json" \
+  -d '{"filename":"video.mp4","category":"files","total_size":83886080,"part_size":8388608}'
+# → {"upload_id":"…","part_size":8388608,"max_parts":1000,…}
+
+# 2. Pousser chaque part (corps brut, numérotées 1..N, re-jouables)
+curl -X PUT http://localhost:8000/v1/files/multipart/{id}/parts/1 \
+  -H "X-API-Key: VOTRE_CLE" -H "Content-Type: application/octet-stream" \
+  --data-binary "@part1.bin"
+# → {"part_number":1,"size_bytes":8388608,"etag":"<sha256>"}
+
+# 3. Assemblage (checksums vérifiés, AV/MIME/chiffrement appliqués)
+curl -X POST http://localhost:8000/v1/files/multipart/{id}/complete \
+  -H "X-API-Key: VOTRE_CLE"
+# → FileUploadResponse standard
+
+# Reprise / abandon :
+curl -H "X-API-Key: VOTRE_CLE" http://localhost:8000/v1/files/multipart/{id}   # état + parts reçues
+curl -X DELETE -H "X-API-Key: VOTRE_CLE" http://localhost:8000/v1/files/multipart/{id}
+```
+
 En production, ajoutez `X-Timestamp` + `X-Signature` =
 `HMAC_SHA256(hmac_secret, "{api_key}:{ts}:{sha256(body)}")` — le corps multipart
 est signé comme `sha256(b"")`. Guides multi-plateformes : `GET /v1/integration/guide`
@@ -110,7 +136,7 @@ app/
   database.py          SQLAlchemy async + migrations légères
   models.py            Client, ApiKey, StoredFile, AuditLog, Webhook(+Delivery)
   ratelimit.py         Rate limiting (mémoire ou Redis)
-  routers/files.py     Upload/bulk/from-url, dossiers, stream, signed, versions
+  routers/files.py     Upload/bulk/from-url/multipart, dossiers, stream, signed, versions
   routers/accounts.py  Register/login/clés/usage/stats/plan
   routers/webhooks.py  CRUD webhooks + livraison en tâche de fond
   routers/billing.py   Stripe checkout + webhook (optionnel)
@@ -143,6 +169,7 @@ tests/                 pytest — 68 tests (uploads, sécurité, accès, plans, 
 | `S3_*` | Bucket, endpoint, clés, région, `S3_PUBLIC_BASE_URL` | — |
 | `REDIS_URL` | Rate limiting distribué (optionnel) | mémoire |
 | `AUDIT_RETENTION_DAYS` | Rétention des logs d'audit | 365 |
+| `MULTIPART_*` | `PART_SIZE_MB` (8), `MAX_PARTS` (1000), `SESSION_HOURS` (24), `MAX_SIZE_MB` (2048) | — |
 | `STRIPE_*` | `SECRET_KEY`, `WEBHOOK_SECRET`, `PRICE_{STARTER,PRO,BUSINESS}` | inactif |
 | `VIRUSTOTAL_API_KEY` | Scan hash optionnel | désactivé |
 | `DISK_ALERT_THRESHOLD_PERCENT` | Seuil d'alerte disque `/health` | 80 |
@@ -163,6 +190,16 @@ alembic upgrade head                # migrations (optionnel — auto en dev)
 
 En dev, `X-API-Key` seule suffit (la clé `API_KEY` du `.env` ou une clé client
 `shk_…`). En production, la signature HMAC est exigée.
+
+### Infra locale complète (S3 + Redis + Postgres)
+
+```bash
+docker compose -f docker-compose.dev.yml up -d    # MinIO + Redis + Postgres
+# .env : STORAGE_BACKEND=s3, S3_ENDPOINT_URL=http://localhost:9000,
+#        S3_ACCESS_KEY=S3_SECRET_KEY=minioadmin, S3_BUCKET=storagehub,
+#        REDIS_URL=redis://localhost:6379/0
+# Console MinIO : http://localhost:9001 — le bucket est créé par minio-init.
+```
 
 ## Déploiement (Dokploy)
 
