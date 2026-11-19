@@ -1,12 +1,15 @@
-# StorageHub — StorageHub Storage Service
+# StorageHub — Storage as a Service
 
-API de stockage de fichiers sécurisée, en mode **SaaS multi-tenant**. Chaque client
-crée un compte, génère ses propres identifiants API (`api_key` + `hmac_secret`) et
-intègre le stockage dans son application web, mobile ou backend.
+API de stockage de fichiers sécurisée en mode **SaaS multi-tenant** — un « mini-S3 »
+clé en main. Chaque client crée un compte, obtient ses propres credentials API
+(`api_key` + `hmac_secret`) et intègre le stockage dans son application web,
+mobile ou backend. Ses utilisateurs finaux poussent leurs documents (photos de
+profil, pièces d'identité, vidéos, archives…) ; StorageHub les stocke, les sécurise
+et les redistribue.
 
 **Production :** https://storagehub.aiforge.world
 **Dashboard :** https://storagehub.aiforge.world/ui/dashboard.html
-**Docs :** https://storagehub.aiforge.world/ui/docs.html · `/docs` (Swagger)
+**Docs :** `/docs` (Swagger) · [API_REFERENCE.md](API_REFERENCE.md) · `GET /v1/integration/guide`
 
 ---
 
@@ -15,31 +18,36 @@ intègre le stockage dans son application web, mobile ou backend.
 - **Comptes self-service** — inscription → credentials API générés instantanément
 - **Dashboard client** — clés API (créer/révoquer), statistiques d'usage, plans
 - **Auth service-to-service** — `X-API-Key` + `X-Timestamp` + `X-Signature` (HMAC-SHA256, anti-rejeu 30 s)
-- **4 catégories** — `avatars` (public, cache CDN) · `kyc` et `receipts` (privés, chiffrés, audités) · `files` (générique, tout type non-exécutable, privé — supporte les dossiers via `folder`)
-- **Sécurité fichiers** — détection MIME par magic bytes, rejet exécutables, purge EXIF, anti path-traversal
-- **URLs signées** — partage temporaire de fichiers sensibles, TTL plafonné par plan
-- **Quotas par plan** — appliqués côté serveur à chaque upload
-- **Audit trail** — journal PostgreSQL de chaque accès sensible (qui, IP, action)
-- **Observabilité** — `/health`, `/v1/metrics` (Prometheus), `X-Request-ID` partout
+- **4 catégories** — `avatars` (public, cache CDN) · `kyc` et `receipts` (privés, chiffrés AES-256-GCM par tenant, audités) · `files` (générique : tout type sauf exécutables, privé)
+- **Dossiers logiques** — champ `folder` sur chaque upload, arborescence via `GET /v1/files/folders`, filtres `?folder=` et `?q=`
+- **Sécurité fichiers** — MIME par magic bytes, antivirus (EICAR/exécutables/PDF-JS), purge EXIF, anti path-traversal, lecture chunkée avec abort précoce
+- **URLs signées** — partage temporaire de fichiers privés, TTL plafonné par plan, secret dédié dérivé
+- **Quotas par plan** — stockage, taille fichier, rate limit, bulk, webhooks appliqués côté serveur
+- **Webhooks** — livraison signée en tâche de fond, retries 0/2/10/30 s, historique des livraisons
+- **Audit trail** — journal de chaque accès sensible (qui, IP, action), rétention configurable
+- **Anti-SSRF** — `/from-url` bloque IPs privées/metadata cloud, redirections re-validées, **épinglage d'IP** anti DNS-rebinding
+- **Stockage pluggable** — disque local ou **S3/R2/MinIO** (`STORAGE_BACKEND`)
+- **Scalable** — rate limiting **Redis** optionnel (`REDIS_URL`), app stateless, Postgres en prod
+- **Billing** — Stripe Checkout + webhook signé (optionnel, `STRIPE_*`)
+- **Migrations** — Alembic (`alembic upgrade head`) + filets légers au démarrage
+- **Observabilité** — `/health`, `/v1/metrics`, `/v1/info`, `X-Request-ID`
 
 ## Plans
 
-| Plan | Prix | Stockage | Clés API | TTL URL signée max | Extras |
-|------|------|----------|----------|---------------------|--------|
-| Gratuit | 0 € | 500 MB | 1 | 60 s | 20 uploads/min |
-| Starter | 5 €/mois | 2 GB | 2 | 2 min | Webhooks, 40/min |
-| Pro | 19 €/mois | 50 GB | 5 | 5 min | Bulk upload, 60/min |
-| Business | 79 €/mois | 500 GB | 20 | 1 h | 300/min, SLA |
+| Plan | Prix | Stockage | Clés API | Fichier max | TTL signé | Extras |
+|------|------|----------|----------|-------------|-----------|--------|
+| Gratuit | 0 € | 500 MB | 1 | 5 MB | 60 s | 20 uploads/min |
+| Starter | 5 €/mois | 2 GB | 2 | 10 MB | 2 min | Webhooks, 40/min |
+| Pro | 19 €/mois | 50 GB | 5 | 25 MB | 5 min | Bulk upload, 60/min |
+| Business | 79 €/mois | 500 GB | 20 | 100 MB | 1 h | 300/min, SLA |
 
-Les comptes démarrent en plan Gratuit. Les upgrades sont provisionnés par
-l'admin (`POST /v1/admin/clients/{id}/plan`, master key) après paiement —
-il n'y a pas d'auto-upgrade ni de passerelle de paiement intégrée.
+Tout compte démarre en **Gratuit**. Upgrades : `POST /v1/billing/checkout`
+(Stripe, si configuré) ou `POST /v1/admin/clients/{id}/plan` (master key).
+Pas d'auto-upgrade direct — `POST /v1/accounts/plan` n'accepte que `free`.
 
 ## Quickstart
 
-### 1. Obtenir des credentials
-
-Via le dashboard (recommandé) ou l'API :
+### 1. Créer un compte
 
 ```bash
 curl -X POST https://storagehub.aiforge.world/v1/accounts/register \
@@ -48,101 +56,121 @@ curl -X POST https://storagehub.aiforge.world/v1/accounts/register \
 # → {"api_key":"shk_…","hmac_secret":"…","access_token":"…"}
 ```
 
-### 2. Uploader un fichier (Python)
+### 2. Uploader (dev — clé seule)
 
-```python
-import hashlib, hmac, time, requests
+```bash
+# Avatar public → URL CDN immédiate
+curl -X POST http://localhost:8000/v1/files \
+  -H "X-API-Key: VOTRE_CLE" -H "X-User-Id: user-42" \
+  -F "file=@photo.jpg" -F "category=avatars"
 
-BASE, KEY, SECRET = "https://storagehub.aiforge.world", "shk_…", "…"
-
-ts = str(int(time.time()))
-body_hash = hashlib.sha256(b"").hexdigest()   # corps vide pour multipart
-sig = hmac.new(SECRET.encode(), f"{KEY}:{ts}:{body_hash}".encode(),
-               hashlib.sha256).hexdigest()
-
-r = requests.post(f"{BASE}/v1/files",
-    files={"file": open("avatar.png", "rb")},
-    data={"category": "avatars"},
-    headers={"X-API-Key": KEY, "X-Timestamp": ts, "X-Signature": sig,
-             "X-User-Id": "user-42"})
-print(r.json()["url"])  # URL publique pour avatars
+# Document générique dans un dossier logique
+curl -X POST http://localhost:8000/v1/files \
+  -H "X-API-Key: VOTRE_CLE" -H "X-User-Id: user-42" \
+  -F "file=@contrat.pdf" -F "category=files" -F "folder=clients/2024"
 ```
 
-> **Multipart** : la signature couvre `sha256(b"")` — le corps multipart n'est
-> pas inclus dans le message signé.
+### 3. Naviguer et télécharger
 
-Guides complets (JavaScript, React Native, Flutter, Node.js, Django) :
-**/ui/docs.html** — et client prêt à l'emploi : `django_integration/storage_client.py`.
+```bash
+curl -H "X-API-Key: VOTRE_CLE" "http://localhost:8000/v1/files/folders"
+curl -H "X-API-Key: VOTRE_CLE" "http://localhost:8000/v1/files?folder=clients/2024&q=contrat"
+curl -H "X-API-Key: VOTRE_CLE" "http://localhost:8000/v1/files/{file_id}/signed?ttl=60"
+```
+
+En production, ajoutez `X-Timestamp` + `X-Signature` =
+`HMAC_SHA256(hmac_secret, "{api_key}:{ts}:{sha256(body)}")` — le corps multipart
+est signé comme `sha256(b"")`. Guides multi-plateformes : `GET /v1/integration/guide`
+et SDKs dans `sdk/` (Python, JavaScript) + `django_integration/`.
 
 ## Architecture
 
 ```
-Client web/mobile/serveur
-        │  (HMAC-SHA256 signé)
+Apps clientes (web/mobile/backend)
+        │  X-API-Key (+ HMAC en prod)
         ▼
-Traefik (HTTPS · Let's Encrypt)  ──► storagehub.aiforge.world
-        │
+Traefik/Nginx (HTTPS, cache CDN pour avatars publics)
         ▼
-FastAPI :8080 ──► PostgreSQL managé (clients, clés, fichiers, audit)
-        └─────► /var/app/uploads/{category}/{YYYY}/{MM}/{uuid}
+FastAPI (stateless, ×N instances)
+   ├────► PostgreSQL  — clients, clés, métadonnées, audit, webhooks
+   ├────► Stockage    — disque local OU S3/R2/MinIO (STORAGE_BACKEND)
+   └────► Redis       — rate limiting distribué (optionnel, REDIS_URL)
 ```
 
-## Stack & structure
+Fichiers stockés sous `{category}/{YYYY}/{MM}/{uuid}` — jamais de chemin client.
+
+## Structure
 
 ```
 app/
-  main.py              FastAPI app, middleware, error handlers, landing page
-  config.py            Settings (pydantic) + catalogue PLANS
-  auth.py              AuthContext, HMAC, résolution clés DB, JWT dashboard
-  database.py          SQLAlchemy async (SQLite dev / PostgreSQL prod)
-  models.py            Client, ApiKey, StoredFile, AuditLog
-  routers/files.py     Upload / download / signed URLs / delete / list
-  routers/accounts.py  Register, login, keys, usage, plans (JWT)
-  routers/public.py    Avatars publics (sans auth)
+  main.py              FastAPI app, middleware, handlers d'erreurs
+  config.py            Settings pydantic + catalogue PLANS
+  auth.py              AuthContext, HMAC, clés DB, JWT dashboard
+  database.py          SQLAlchemy async + migrations légères
+  models.py            Client, ApiKey, StoredFile, AuditLog, Webhook(+Delivery)
+  ratelimit.py         Rate limiting (mémoire ou Redis)
+  routers/files.py     Upload/bulk/from-url, dossiers, stream, signed, versions
+  routers/accounts.py  Register/login/clés/usage/stats/plan
+  routers/webhooks.py  CRUD webhooks + livraison en tâche de fond
+  routers/billing.py   Stripe checkout + webhook (optionnel)
+  routers/admin.py     Vue d'ensemble + gestion clients (master key)
+  routers/public.py    Avatars publics
   routers/health.py    /health, /v1/metrics, /v1/info
-  utils/               storage, file_validation, image_processing, audit, security
-ui/
-  index.html           Landing page (marketing, pricing)
-  dashboard.html       Espace client (login, clés, usage, plans)
-  docs.html            Documentation d'intégration multi-plateforme
-django_integration/    Client Python pour le backend StorageHub
-nginx/                 Conf Nginx de référence (prod hors Dokploy)
-scripts/               backup (restic), monitoring disque, migration Emergent
-tests/                 pytest — uploads, sécurité, contrôle d'accès
+  routers/integration.py  Guide d'intégration + test de connexion
+  utils/               storage, backends (local/S3), encryption (AES-256-GCM),
+                       file_validation, url_safety (SSRF), thumbnails, security
+  tasks/purge.py       Purge fichiers + rétention audit (APScheduler)
+alembic/               Migrations Alembic (env + baseline)
+ui/                    Landing, dashboard, docs, integration, page de test
+sdk/                   Clients Python et JavaScript
+tests/                 pytest — 54 tests (uploads, sécurité, accès, plans, limites)
 ```
 
-## Variables d'environnement (service)
+## Variables d'environnement
 
-| Variable | Rôle |
-|---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://…` (SQLite par défaut en dev) |
-| `API_KEY` / `HMAC_SECRET` | Clé **maître** interne (admin, tests) — les clients ont leurs propres clés en DB |
-| `HMAC_TIMESTAMP_TOLERANCE_SECONDS` | Fenêtre anti-rejeu (défaut 30) |
-| `UPLOAD_ROOT` | Racine de stockage (`/var/app/uploads` en prod) |
-| `MAX_SIZE_{AVATAR,KYC,RECEIPT}_MB` | Limites par catégorie |
-| `SIGNED_URL_TTL` | TTL par défaut des URLs signées |
-| `BASE_URL` / `CDN_BASE_URL` | Base publique pour les URLs générées |
-| `DISK_ALERT_THRESHOLD_PERCENT` | Seuil d'alerte disque `/health` |
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `APP_ENV` | `development` (auth souple, /docs) ou `production` | development |
+| `DATABASE_URL` | `postgresql+asyncpg://…` (SQLite si absent) | sqlite local |
+| `API_KEY` / `HMAC_SECRET` | Clé **maître** interne (admin) | dev keys |
+| `ENCRYPTION_KEY` | Clé de chiffrement des documents sensibles | dev key |
+| `UPLOAD_ROOT` | Racine de stockage local | `./uploads` |
+| `MAX_SIZE_{AVATAR,KYC,RECEIPT,FILE}_MB` | Limites par catégorie | 5/10/10/100 |
+| `SIGNED_URL_TTL` | TTL par défaut des URLs signées | 60 |
+| `BASE_URL` / `CDN_BASE_URL` | Bases des URLs générées | localhost |
+| `STORAGE_BACKEND` | `local` ou `s3` | local |
+| `S3_*` | Bucket, endpoint, clés, région, `S3_PUBLIC_BASE_URL` | — |
+| `REDIS_URL` | Rate limiting distribué (optionnel) | mémoire |
+| `AUDIT_RETENTION_DAYS` | Rétention des logs d'audit | 365 |
+| `STRIPE_*` | `SECRET_KEY`, `WEBHOOK_SECRET`, `PRICE_{STARTER,PRO,BUSINESS}` | inactif |
+| `VIRUSTOTAL_API_KEY` | Scan hash optionnel | désactivé |
+| `DISK_ALERT_THRESHOLD_PERCENT` | Seuil d'alerte disque `/health` | 80 |
 
 ## Développement local
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env        # APP_ENV=development, SQLite par défaut
-uvicorn app.main:app --reload --port 8080
-# → http://localhost:8080          landing page
-# → http://localhost:8080/docs     Swagger UI (dev uniquement — désactivé en prod)
-# → http://localhost:8080/ui/dashboard.html
-pytest                      # tests
+cp .env.example .env          # APP_ENV=development, SQLite par défaut
+uvicorn app.main:app --reload --port 8000
+# → http://localhost:8000             landing page
+# → http://localhost:8000/docs        Swagger UI (dev uniquement)
+# → http://localhost:8000/test        page de test interactive
+# → http://localhost:8000/ui/dashboard.html
+pytest tests                        # 54 tests
+alembic upgrade head                # migrations (optionnel — auto en dev)
 ```
+
+En dev, `X-API-Key` seule suffit (la clé `API_KEY` du `.env` ou une clé client
+`shk_…`). En production, la signature HMAC est exigée.
 
 ## Déploiement (Dokploy)
 
-Service `compose` (source `git` → `main`, `composePath: ./docker-compose.yml`),
+Service `compose` (source `git` → `walter`, `composePath: ./docker-compose.yml`),
 domaine Traefik `storagehub.aiforge.world` → port 8080, HTTPS Let's Encrypt.
-PostgreSQL : service managé Dokploy `storagehub-db` (volume persistant).
+PostgreSQL managé + volume `uploads_data` (ou `STORAGE_BACKEND=s3` + R2/MinIO).
 
-Env Dokploy : `DATABASE_URL`, `API_KEY`, `HMAC_SECRET`, `BASE_URL`, `CDN_BASE_URL`.
+Env prod : `APP_ENV=production`, `DATABASE_URL`, `API_KEY`, `HMAC_SECRET`,
+`ENCRYPTION_KEY`, `BASE_URL`, `CDN_BASE_URL` (+ `REDIS_URL`, `S3_*`, `STRIPE_*`).
 
 ---
 

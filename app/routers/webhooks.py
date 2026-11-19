@@ -124,10 +124,64 @@ def _sign_payload(payload: str, secret: str) -> str:
     return hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
 
 
+# Backoff (secondes) entre les tentatives de livraison
+_DELIVERY_BACKOFF = [0, 2, 10, 30]
+
+
+async def _deliver_webhook(wh_id: str, wh_url: str, wh_secret: Optional[str],
+                           event: str, payload_str: str):
+    """
+    Livraison en tâche de fond avec retries exponentiels — n'ajoute plus
+    de latence à la requête d'upload. Utilise sa propre session DB.
+    """
+    from app.database import AsyncSessionLocal
+
+    headers = {
+        "Content-Type":       "application/json",
+        "X-StorageHub-Event": event,
+        "X-Delivery-ID":      str(uuid.uuid4()),
+    }
+    if wh_secret:
+        headers["X-StorageHub-Signature"] = f"sha256={_sign_payload(payload_str, wh_secret)}"
+
+    status_code, error_msg, success, attempts = None, None, False, 0
+    async with httpx.AsyncClient(timeout=5.0) as client_http:
+        for i, delay in enumerate(_DELIVERY_BACKOFF):
+            if delay:
+                await asyncio.sleep(delay)
+            attempts = i + 1
+            try:
+                resp = await client_http.post(wh_url, content=payload_str, headers=headers)
+                status_code = resp.status_code
+                success = 200 <= status_code < 300
+                if success:
+                    break
+            except Exception as exc:
+                error_msg = str(exc)[:500]
+
+    try:
+        async with AsyncSessionLocal() as session:
+            session.add(models.WebhookDelivery(
+                webhook_id=wh_id,
+                event=event,
+                payload=payload_str[:4000],
+                response_status=status_code,
+                attempts=attempts,
+                success=success,
+                error=error_msg,
+            ))
+            await session.commit()
+    except Exception as exc:
+        logger.error(f"Failed to record webhook delivery {wh_id}: {exc}")
+
+    if not success:
+        logger.warning(f"Webhook {wh_id} delivery failed after {attempts} attempts: {error_msg or status_code}")
+
+
 async def fire_event(event: str, data: dict, client_id: Optional[str], db: AsyncSession):
     """
-    Envoie l'événement à tous les webhooks actifs du client.
-    Appelé de façon asynchrone depuis le router files — les erreurs sont silencieuses.
+    Envoie l'événement à tous les webhooks actifs du client en arrière-plan.
+    Retourne immédiatement — la livraison (avec retries) se fait en tâche de fond.
     """
     if not client_id:
         return
@@ -143,50 +197,14 @@ async def fire_event(event: str, data: dict, client_id: Optional[str], db: Async
     if not webhooks:
         return
 
-    payload_obj = {
-        "event":      event,
+    payload_str = json.dumps({
+        "event":       event,
         "occurred_at": datetime.utcnow().isoformat() + "Z",
-        "data":       data,
-    }
-    payload_str = json.dumps(payload_obj)
+        "data":        data,
+    })
 
     for wh in webhooks:
-        if not wh.listens_to(event):
-            continue
-
-        headers = {
-            "Content-Type":     "application/json",
-            "X-StorageHub-Event": event,
-            "X-Delivery-ID":    str(uuid.uuid4()),
-        }
-        if wh.secret:
-            headers["X-StorageHub-Signature"] = f"sha256={_sign_payload(payload_str, wh.secret)}"
-
-        status_code, error_msg, success = None, None, False
-        # 2 tentatives : la seconde après un court délai
-        for attempt in range(2):
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as client_http:
-                    resp = await client_http.post(wh.url, content=payload_str, headers=headers)
-                    status_code = resp.status_code
-                    success = 200 <= status_code < 300
-                    if success:
-                        break
-                    if attempt == 0:
-                        await asyncio.sleep(2)
-            except Exception as exc:
-                error_msg = str(exc)[:500]
-                if attempt == 0:
-                    await asyncio.sleep(2)
-
-        delivery = models.WebhookDelivery(
-            webhook_id=wh.id,
-            event=event,
-            payload=payload_str[:4000],
-            response_status=status_code,
-            success=success,
-            error=error_msg,
-        )
-        db.add(delivery)
-
-    await db.commit()
+        if wh.listens_to(event):
+            asyncio.create_task(
+                _deliver_webhook(wh.id, wh.url, wh.secret, event, payload_str)
+            )

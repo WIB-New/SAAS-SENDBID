@@ -80,21 +80,26 @@ async def validate_upload(
     """
     validate_category(category)
 
-    # Read file into memory for validation
-    content = await file.read()
-
-    # 1. Size check
+    # Lecture par chunks avec abort précoce : un body géant est rejeté dès que
+    # la limite est franchie au lieu d'être entièrement bufferisé en RAM.
     max_bytes = settings.max_sizes_bytes[category]
+    chunks = []
+    total = 0
+    while chunk := await file.read(65536):
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"File too large: exceeds {max_bytes / 1024 / 1024} MB "
+                    f"max for '{category}'"
+                ),
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
+
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="Empty file not allowed")
-    if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=413,
-            detail=(
-                f"File too large: {len(content) / 1024 / 1024:.2f} MB. "
-                f"Max for '{category}': {max_bytes / 1024 / 1024} MB"
-            ),
-        )
 
     allowed = settings.allowed_mimes.get(category, [])
 

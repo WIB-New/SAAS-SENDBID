@@ -34,19 +34,14 @@ def generate_thumbnail(content: bytes, mime_type: str) -> Optional[bytes]:
 
 async def save_thumbnail(thumb_bytes: bytes, file_id: str) -> Optional[str]:
     """
-    Sauvegarde le thumbnail sur le disque.
+    Sauvegarde le thumbnail via le backend de stockage.
     Retourne le chemin relatif (ex: 'thumbnails/abc123.jpg') ou None en cas d'erreur.
     """
-    import aiofiles
-    from app.config import settings
+    from app.utils.backends import get_storage_backend
 
-    thumb_dir: Path = settings.upload_path / "thumbnails"
-    thumb_dir.mkdir(parents=True, exist_ok=True)
     relative = f"thumbnails/{file_id}.jpg"
-    abs_path = settings.upload_path / relative
     try:
-        async with aiofiles.open(abs_path, "wb") as f:
-            await f.write(thumb_bytes)
+        await get_storage_backend().save(thumb_bytes, relative)
         return relative
     except Exception:
         return None

@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException
 
 from app.config import settings
 from app.database import init_db
-from app.routers import accounts, files, health, public, webhooks, integration, admin
+from app.routers import accounts, billing, files, health, public, webhooks, integration, admin
 from app.schemas import ApiError, ErrorCode
 
 _start_time = time.time()
@@ -203,6 +203,7 @@ app.include_router(accounts.router)
 app.include_router(webhooks.router)
 app.include_router(integration.router)
 app.include_router(admin.router, dependencies=[Depends(_master_key_dep)])
+app.include_router(billing.router)
 app.include_router(health.router)
 app.include_router(public.router)
 

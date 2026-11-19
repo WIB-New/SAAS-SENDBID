@@ -14,8 +14,6 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
 
-import aiofiles
-
 from app.config import settings
 from app.utils.security import derive_secret
 
@@ -40,30 +38,18 @@ async def save_file_to_disk(
     file_id: str,
 ) -> tuple[Path, str]:
     """
-    Persist file bytes to the upload root.
-    Returns (absolute_path, checksum_sha256).
+    Persist file bytes via le backend configuré (local ou S3/R2/MinIO).
+    Returns (path_ou_clé, checksum_sha256).
     """
+    from app.utils.backends import get_storage_backend
     relative_path = build_stored_path(category, file_id)
-    abs_path = settings.upload_path / relative_path
-
-    # Ensure directory exists
-    abs_path.parent.mkdir(parents=True, exist_ok=True)
-
-    async with aiofiles.open(abs_path, "wb") as f:
-        await f.write(content)
-
-    checksum = compute_sha256(content)
-    return abs_path, checksum
+    return await get_storage_backend().save(content, relative_path)
 
 
 def delete_file_from_disk(stored_path: str) -> bool:
-    """Delete a file from disk. Returns True if deleted, False if not found."""
-    abs_path = settings.upload_path / stored_path
-    try:
-        abs_path.unlink(missing_ok=True)
-        return True
-    except Exception:
-        return False
+    """Delete a file via le backend configuré. Returns True if deleted."""
+    from app.utils.backends import get_storage_backend
+    return get_storage_backend().delete(stored_path)
 
 
 def generate_signed_url(file_id: str, ttl_seconds: Optional[int] = None) -> tuple[str, datetime]:

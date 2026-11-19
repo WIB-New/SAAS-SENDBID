@@ -60,19 +60,41 @@ async def purge_deleted_files() -> dict:
     return summary
 
 
+async def purge_old_audit_logs() -> int:
+    """
+    Supprime les AuditLog plus vieux que settings.audit_retention_days.
+    Évite la croissance infinie de la table. Retourne le nombre supprimé.
+    """
+    from sqlalchemy import delete
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.models import AuditLog
+
+    threshold = datetime.utcnow() - timedelta(days=settings.audit_retention_days)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            delete(AuditLog).where(AuditLog.timestamp < threshold)
+        )
+        await session.commit()
+    count = result.rowcount or 0
+    if count:
+        logger.info(f"[PURGE] {count} audit log(s) older than {settings.audit_retention_days}d deleted")
+    return count
+
+
 async def purge_legacy_plaintext_thumbnails() -> int:
     """
     Supprime les miniatures de fichiers sensibles écrites en clair par les
     anciennes versions (v1 chiffrait le fichier mais pas son thumbnail).
     Retourne le nombre de miniatures supprimées.
     """
-    import aiofiles
     from sqlalchemy import select
-    from app.config import settings
     from app.database import AsyncSessionLocal
     from app.models import StoredFile
+    from app.utils.backends import get_storage_backend
     from app.utils.encryption import looks_encrypted
 
+    storage = get_storage_backend()
     cleaned = 0
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -82,14 +104,12 @@ async def purge_legacy_plaintext_thumbnails() -> int:
             )
         )
         for f in result.scalars():
-            abs_path = settings.upload_path / f.thumbnail_path
             try:
-                if not abs_path.exists():
+                if not storage.exists(f.thumbnail_path):
                     continue
-                async with aiofiles.open(abs_path, "rb") as fh:
-                    head = await fh.read(16)
+                head = (await storage.read(f.thumbnail_path))[:16]
                 if not looks_encrypted(head):
-                    abs_path.unlink()
+                    storage.delete(f.thumbnail_path)
                     f.thumbnail_path = None
                     cleaned += 1
             except Exception as exc:
@@ -107,6 +127,15 @@ def start_scheduler() -> AsyncIOScheduler:
         hour=3,
         minute=0,
         id="daily_purge",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        purge_old_audit_logs,
+        trigger="cron",
+        hour=3,
+        minute=30,
+        id="audit_retention",
         replace_existing=True,
         misfire_grace_time=3600,
     )

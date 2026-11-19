@@ -107,15 +107,20 @@ async def test_connection(
             "upload_avatar": True,
             "upload_kyc":    True,
             "upload_receipt": True,
+            "upload_files": True,
             "max_file_sizes": {
                 "avatars":  f"{settings.max_size_avatar_mb} MB",
                 "kyc":      f"{settings.max_size_kyc_mb} MB",
                 "receipts": f"{settings.max_size_receipt_mb} MB",
+                "files":    f"{settings.max_size_file_mb} MB",
             },
-            "webhooks":  True,
+            "plan_file_size_limit": f"{plan.get('max_file_size_mb', 0)} MB",
+            "webhooks":  plan.get("webhooks", False),
+            "bulk_upload": plan.get("bulk_upload", False),
             "signed_urls": True,
             "thumbnails": True,
             "encryption": True,
+            "folders":   True,
             "signed_url_max_ttl": f"{plan.get('signed_url_max_ttl', 60)}s",
         },
     }
@@ -157,11 +162,11 @@ async def integration_guide(request: Request):
         # ── Authentification ─────────────────────────────────────────────
         "authentication": {
             "method":      "API Key via header X-API-Key",
-            "dev_mode":    "Clé de test : dev-api-key-sendbid-2024",
+            "dev_mode":    "En développement, la clé seule suffit (valeur API_KEY de votre .env). En production, ajoutez X-Timestamp + X-Signature (HMAC-SHA256).",
             "production":  "Obtenez votre clé via POST /v1/accounts/register",
             "user_context": {
                 "X-User-Id":   "Identifiant de votre utilisateur final (ex: user-123)",
-                "X-User-Role": "Rôle : 'user' ou 'admin'",
+                "X-User-Role": "Rôle : 'user' ou 'admin' (admin = limité à votre tenant)",
             },
         },
 
@@ -170,14 +175,17 @@ async def integration_guide(request: Request):
             "register":        f"POST {base}/v1/accounts/register",
             "login":           f"POST {base}/v1/accounts/login",
             "upload":          f"POST {base}/v1/files",
-            "upload_bulk":     f"POST {base}/v1/files/bulk",
+            "upload_bulk":     f"POST {base}/v1/files/bulk  (plan Pro+)",
             "upload_from_url": f"POST {base}/v1/files/from-url",
-            "list_files":      f"GET  {base}/v1/files?page=1&limit=20",
+            "list_files":      f"GET  {base}/v1/files?page=1&limit=20&category=&folder=&q=",
+            "list_folders":    f"GET  {base}/v1/files/folders",
+            "file_meta":       f"GET  {base}/v1/files/{{file_id}}/meta",
             "download":        f"GET  {base}/v1/files/{{file_id}}",
             "signed_url":      f"GET  {base}/v1/files/{{file_id}}/signed",
             "thumbnail":       f"GET  {base}/v1/files/{{file_id}}/thumbnail",
             "delete":          f"DELETE {base}/v1/files/{{file_id}}",
-            "webhook_create":  f"POST {base}/v1/webhooks",
+            "webhook_create":  f"POST {base}/v1/webhooks  (plan Starter+)",
+            "billing":         f"POST {base}/v1/billing/checkout  (JWT, si Stripe configuré)",
             "quota":           f"GET  {base}/v1/accounts/usage",
             "stats":           f"GET  {base}/v1/accounts/stats",
             "test_connect":    f"POST {base}/v1/integration/test",
@@ -290,8 +298,23 @@ signed_url = resp.json()["signed_url"]
 # Partagez cette URL temporairement avec votre utilisateur""",
             },
 
-            "step5_webhook": {
-                "description": "5. Recevoir des notifications (webhook)",
+            "step5_upload_generic": {
+                "description": "5. Fichier quelconque + dossier logique (catégorie 'files')",
+                "curl": f"""curl -X POST {base}/v1/files \\
+  -H "X-API-Key: {api_key_example}" \\
+  -H "X-User-Id: user-123" \\
+  -F "file=@contrat.pdf" \\
+  -F "category=files" \\
+  -F "folder=clients/2024" """,
+                "note": ("'files' accepte tout type sauf exécutables (max "
+                         f"{settings.max_size_file_mb} MB). Le champ 'folder' conserve "
+                         "l'arborescence — interrogeable via GET /v1/files/folders "
+                         "et GET /v1/files?folder=clients/2024. Privé : accès par "
+                         "download authentifié ou URL signée."),
+            },
+
+            "step6_webhook": {
+                "description": "6. Recevoir des notifications (webhook)",
                 "curl": f"""curl -X POST {base}/v1/webhooks \\
   -H "X-API-Key: {api_key_example}" \\
   -H "Content-Type: application/json" \\
@@ -365,10 +388,11 @@ const {{ items, total }} = await hub.listFiles({{ category: "kyc" }});""",
                 "MISSING_API_KEY":   "Header X-API-Key manquant",
                 "INVALID_API_KEY":   "Clé invalide ou révoquée",
                 "QUOTA_EXCEEDED":    "Quota de stockage dépassé — passez au plan supérieur",
-                "FILE_TOO_LARGE":    f"Fichier trop grand (max avatars={settings.max_size_avatar_mb}MB, kyc/receipts={settings.max_size_kyc_mb}MB)",
+                "FILE_TOO_LARGE":    f"Fichier trop grand (catégorie + limite du plan : avatars={settings.max_size_avatar_mb}MB, kyc/receipts={settings.max_size_kyc_mb}MB, files={settings.max_size_file_mb}MB)",
                 "INVALID_MIME":      "Type de fichier non autorisé pour cette catégorie",
                 "MALWARE_DETECTED":  "Fichier rejeté par le scan antivirus",
-                "RATE_LIMIT_EXCEEDED": "Trop de requêtes — max 60 uploads/min",
+                "RATE_LIMIT_EXCEEDED": "Trop de requêtes — limite selon votre plan (20 à 300 uploads/min)",
+                "FORBIDDEN":         "Feature non incluse dans votre plan (bulk=Pro+, webhooks=Starter+) ou accès refusé",
                 "SIGNED_URL_INVALID": "URL signée expirée ou invalide",
             },
         },

@@ -295,27 +295,36 @@ url = client.get_file_url(file_id, user_id=<span class="b">str</span>(request.us
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/accounts/me</td><td>Profil + usage + clés</td></tr>
       <tr><td><span class="badge-m post">POST</span></td><td>/v1/accounts/keys</td><td>Nouvelle clé API</td></tr>
       <tr><td><span class="badge-m del">DELETE</span></td><td>/v1/accounts/keys/{id}</td><td>Révoquer une clé</td></tr>
-      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files</td><td>Upload (multipart: file, category, owner_user_id?)</td></tr>
-      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files</td><td>Lister les fichiers</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files</td><td>Upload (multipart: file, category, owner_user_id?, folder?, tags?)</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/bulk</td><td>Upload multiple (plan Pro+)</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/from-url</td><td>Importer depuis une URL (anti-SSRF)</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files</td><td>Liste paginée (?category, ?folder, ?q)</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/folders</td><td>Arborescence des dossiers</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}</td><td>Stream authentifié</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/meta</td><td>Métadonnées JSON</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/thumbnail</td><td>Miniature JPEG 256×256</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/signed</td><td>Générer une URL signée</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/download</td><td>Download via URL signée</td></tr>
-      <tr><td><span class="badge-m del">DELETE</span></td><td>/v1/files/{id}</td><td>Suppression logique</td></tr>
+      <tr><td><span class="badge-m get">GET</span></td><td>/v1/files/{id}/versions</td><td>Historique des versions</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/files/{id}/replace</td><td>Nouvelle version</td></tr>
+      <tr><td><span class="badge-m del">DELETE</span></td><td>/v1/files/{id}</td><td>Suppression logique (toute la chaîne)</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/v1/public/avatars/{id}</td><td>Avatar public (sans auth)</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/webhooks</td><td>Webhook (plan Starter+, retries 0/2/10/30s)</td></tr>
+      <tr><td><span class="badge-m post">POST</span></td><td>/v1/billing/checkout</td><td>Upgrade de plan (JWT, Stripe)</td></tr>
       <tr><td><span class="badge-m get">GET</span></td><td>/health · /v1/metrics</td><td>Monitoring</td></tr>
     </table>
 
     <!-- ═══ LIMITS ═══ -->
     <h2 id="limits">Limites par plan</h2>
     <table>
-      <tr><th>Plan</th><th>Stockage</th><th>Clés API</th><th>TTL URL signée max</th></tr>
-      <tr><td>Gratuit</td><td>500 MB</td><td>1</td><td>60 s</td></tr>
-      <tr><td>Pro — 19€/mois</td><td>50 GB</td><td>3</td><td>5 min</td></tr>
-      <tr><td>Business — 79€/mois</td><td>500 GB</td><td>10</td><td>1 h</td></tr>
+      <tr><th>Plan</th><th>Stockage</th><th>Clés API</th><th>Fichier max</th><th>TTL signé</th><th>Extras</th></tr>
+      <tr><td>Gratuit</td><td>500 MB</td><td>1</td><td>5 MB</td><td>60 s</td><td>20 uploads/min</td></tr>
+      <tr><td>Starter — 5€/mois</td><td>2 GB</td><td>2</td><td>10 MB</td><td>2 min</td><td>Webhooks, 40/min</td></tr>
+      <tr><td>Pro — 19€/mois</td><td>50 GB</td><td>5</td><td>25 MB</td><td>5 min</td><td>Bulk upload, 60/min</td></tr>
+      <tr><td>Business — 79€/mois</td><td>500 GB</td><td>20</td><td>100 MB</td><td>1 h</td><td>300/min, SLA</td></tr>
     </table>
-    <div class="note">Quotas appliqués côté serveur à chaque upload. Changez de plan
-    via <code>POST /v1/accounts/plan</code> ou le dashboard.</div>
+    <div class="note">Quotas appliqués côté serveur à chaque upload. Upgrade via
+    <code>POST /v1/billing/checkout</code> (Stripe) — l'auto-upgrade direct n'existe pas.</div>
   </main>
 </div>
 

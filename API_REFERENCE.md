@@ -273,14 +273,16 @@ storagehub_category_file_count{category="avatars"} 45
 
 ```json
 // REQUEST
-{ "plan": "pro" }
+{ "plan": "free" }
 
 // RESPONSE 200
-{
-  "plan": "pro",
-  "plan_details": { "name": "Pro", "price_monthly": 19, "storage_mb": 51200, "max_keys": 3, "signed_url_max_ttl": 300, "support": "Email 24h" }
-}
+{ "plan": "free", "plan_details": { ... } }
 ```
+
+> ⚠️ **Rétrogradation uniquement.** Les upgrades vers un plan payant
+> passent par `POST /v1/billing/checkout` (Stripe) ou sont provisionnés
+> par l'opérateur via `POST /v1/admin/clients/{id}/plan`. Un upgrade
+> direct retourne `403`.
 
 ### `GET /v1/accounts/usage` — Quota temps réel
 
@@ -321,7 +323,7 @@ storagehub_category_file_count{category="avatars"} 45
     "next_plan":   "Pro",
     "next_price":  "19€/mois",
     "next_quota":  "50.00 GB",
-    "upgrade_url": "POST /v1/accounts/plan"
+    "upgrade_url": "POST /v1/billing/checkout"
   }
 }
 ```
@@ -365,10 +367,22 @@ storagehub_category_file_count{category="avatars"} 45
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `file` | binary | ✅ | Fichier à uploader |
-| `category` | string | ✅ | `avatars` \| `kyc` \| `receipts` |
+| `category` | string | ✅ | `avatars` \| `kyc` \| `receipts` \| `files` |
 | `owner_user_id` | string | ❌ | Surcharge X-User-Id |
 | `tags` | JSON string | ❌ | `{"user_id":"123","app":"myapp"}` |
+| `folder` | string | ❌ | Chemin de dossier logique (ex: `docs/2024`) — assaini côté serveur, jamais utilisé comme chemin disque |
 | `replaces_file_id` | UUID | ❌ | Crée une nouvelle version |
+
+**Catégories :**
+
+| Catégorie | Types acceptés | Taille max | Accès |
+|-----------|---------------|-----------|-------|
+| `avatars` | JPEG, PNG, WebP | 5 MB | **Public** (URL directe, cache CDN) |
+| `kyc` | JPEG, PNG, PDF | 10 MB | Privé, **chiffré AES-256-GCM**, audité |
+| `receipts` | JPEG, PNG, PDF | 10 MB | Privé, **chiffré AES-256-GCM**, audité |
+| `files` | **Tous types** (sauf exécutables) | 100 MB | Privé, téléchargement auth ou URL signée |
+
+> Le plan du client peut imposer une limite plus basse (`max_file_size_mb` : 5/10/25/100 MB selon plan). Les exécutables (PE/ELF/Mach-O/scripts) sont **toujours rejetés**, y compris en catégorie `files`.
 
 ```json
 // RESPONSE 201
@@ -393,8 +407,11 @@ storagehub_category_file_count{category="avatars"} 45
 | Champ | Type | Description |
 |-------|------|-------------|
 | `files` | binary[] | Plusieurs fichiers |
-| `category` | string | `avatars` \| `kyc` \| `receipts` |
+| `category` | string | `avatars` \| `kyc` \| `receipts` \| `files` |
 | `tags` | JSON string | Optionnel |
+| `folder` | string | Dossier logique commun à tous les fichiers |
+
+> **Plan Pro ou supérieur requis** — `403` sinon.
 
 ```json
 // RESPONSE 201
@@ -425,16 +442,22 @@ storagehub_category_file_count{category="avatars"} 45
 {
   "url":      "https://example.com/photo.jpg",
   "category": "avatars",
-  "tags":     { "source": "external_import" }   // optionnel
+  "tags":     { "source": "external_import" },   // optionnel
+  "folder":   "imports"                          // optionnel
 }
 
 // RESPONSE 201 — identique à POST /v1/files
+//
+// Sécurité SSRF : les URLs vers des adresses privées, loopback,
+// link-local ou réservées sont refusées ; les redirections sont
+// re-validées et la connexion est épinglée sur l'IP vérifiée.
 ```
 
 ### `GET /v1/files` — Liste paginée
 
-**Params :** `?page=1&limit=20&sort=created_at:desc&category=avatars`
+**Params :** `?page=1&limit=20&sort=created_at:desc&category=avatars&folder=docs/2024&q=rapport`
 **Sort :** `created_at` \| `size_bytes` \| `mime_type` \| `category` (+ `:asc` ou `:desc`)
+**Filtres :** `category` (exact) · `folder` (dossier exact, `folder=` vide = fichiers sans dossier) · `q` (recherche sur le nom de fichier)
 
 ```json
 // RESPONSE 200
@@ -444,6 +467,8 @@ storagehub_category_file_count{category="avatars"} 45
       "file_id":         "uuid",
       "owner_user_id":   "user-123",
       "category":        "avatars",
+      "original_filename": "photo.jpg",
+      "folder":          "docs/2024",
       "mime_type":       "image/jpeg",
       "size_bytes":      86381,
       "checksum_sha256": "sha256hex...",
@@ -463,6 +488,20 @@ storagehub_category_file_count{category="avatars"} 45
   "limit": 20,
   "pages": 3
 }
+```
+
+### `GET /v1/files/folders` — Arborescence des dossiers
+
+Liste les dossiers logiques (champ `folder` des uploads) avec leurs stats.
+Même scoping d'accès que `GET /v1/files`.
+
+```json
+// RESPONSE 200
+[
+  { "folder": "docs/2024",     "file_count": 12, "total_bytes": 8388608 },
+  { "folder": "imports",       "file_count": 3,  "total_bytes": 1048576 },
+  { "folder": "photos/profil", "file_count": 45, "total_bytes": 41943040 }
+]
 ```
 
 ### `GET /v1/files/{file_id}` — Télécharger (auth requise)
@@ -530,6 +569,9 @@ storagehub_category_file_count{category="avatars"} 45
 { "file_id": "uuid", "deleted": true, "message": "File marked for deletion" }
 ```
 
+> Supprime aussi **toute la chaîne de versions** du fichier (soft-delete),
+> puis purge physique après 30 jours (tâche nocturne).
+
 ### `GET /v1/public/avatars/{file_id}` — Avatar public (sans auth)
 
 **Response :** stream `image/jpeg` · **Headers :** `Cache-Control: public, max-age=31536000, immutable`
@@ -583,12 +625,17 @@ storagehub_category_file_count{category="avatars"} 45
     "webhook_id":      "uuid",
     "event":           "file.uploaded",
     "response_status": 200,
+    "attempts":        1,
     "success":         true,
     "error":           null,
     "attempted_at":    "2026-10-15T10:00:00"
   }
 ]
 ```
+
+> **Retries** : la livraison se fait en tâche de fond avec backoff
+> 0 s → 2 s → 10 s → 30 s (4 tentatives max). Le champ `attempts`
+> indique le nombre d'essais réellement effectués.
 
 ### Payload envoyé à votre endpoint webhook
 
@@ -645,7 +692,7 @@ def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
     "pro":      { "name": "Pro",      "price_monthly_eur": 19, "storage_mb": 51200,  "storage_label": "50 GB" },
     "business": { "name": "Business", "price_monthly_eur": 79, "storage_mb": 512000, "storage_label": "500 GB" }
   },
-  "categories": ["avatars", "kyc", "receipts"],
+  "categories": ["avatars", "kyc", "receipts", "files"],
   "docs_url":   "http://localhost:8080/docs"
 }
 ```
@@ -928,19 +975,63 @@ def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
 
 ---
 
+## Billing (Stripe — si configuré)
+
+### `POST /v1/billing/checkout` — Créer une session de paiement
+
+**Auth :** `Authorization: Bearer <jwt>` · `503` si le billing n'est pas configuré
+
+```json
+// REQUEST
+{ "plan": "pro" }
+
+// RESPONSE 200
+{
+  "checkout_url": "https://checkout.stripe.com/c/pay/...",
+  "session_id":   "cs_test_...",
+  "plan":         "pro"
+}
+```
+
+### `POST /v1/billing/webhook` — Réception Stripe (interne)
+
+Endpoint appelé par Stripe (`checkout.session.completed`) — signature
+`Stripe-Signature` vérifiée, provisionne le plan payé automatiquement.
+Non destiné aux clients API.
+
+---
+
+## Pages HTML
+
+| Route | Description |
+|-------|-------------|
+| `GET /` | Landing page |
+| `GET /ui` | Landing page |
+| `GET /ui/dashboard.html` | Dashboard client (login JWT) |
+| `GET /integration` | Dashboard intégrateur |
+| `GET /test` | Suite de tests API |
+| `GET /docs` | Swagger UI |
+| `GET /redoc` | ReDoc |
+
+---
+
 ## Limites par plan
 
 | Fonctionnalité | Free (0€) | Starter (5€) | Pro (19€) | Business (79€) |
 |----------------|-----------|-------------|-----------|----------------|
 | Stockage | 500 MB | 2 GB | 50 GB | 500 GB |
-| Clés API max | 1 | 2 | 3 | 10 |
+| Clés API max | 1 | 2 | 5 | 20 |
+| Taille max par fichier | 5 MB | 10 MB | 25 MB | 100 MB |
 | TTL URL signée max | 60s | 120s | 300s | 3600s |
-| Chiffrement AES-256 | ❌ | ✅ | ✅ | ✅ |
+| Chiffrement AES-256-GCM | ✅ | ✅ | ✅ | ✅ |
 | Webhooks | ❌ | ✅ | ✅ | ✅ |
 | Upload bulk | ❌ | ❌ | ✅ | ✅ |
-| Rate limit uploads | 60/min | 60/min | 100/min | 200/min |
+| Rate limit uploads | 20/min | 40/min | 60/min | 300/min |
 | Support | Community | Email | Email 24h | Prioritaire + SLA |
+
+> Le chiffrement est toujours actif sur `kyc`/`receipts` — c'est une
+> mesure de sécurité, pas une option payante.
 
 ---
 
-*Généré automatiquement — StorageHub v2.0 · WIB Company · octobre 2026*
+*StorageHub v2.0 · WIB Company · octobre 2026*
