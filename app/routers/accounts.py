@@ -245,6 +245,17 @@ async def me(
 
 
 # ── API keys management ──
+@router.get("/v1/accounts/keys", summary="Lister ses clés API (masquées)")
+async def list_keys(
+    client: models.Client = Depends(get_current_client),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(models.ApiKey).where(models.ApiKey.client_id == client.id)
+    )
+    return [_key_out(k) for k in result.scalars().all()]
+
+
 @router.post("/v1/accounts/keys", status_code=201, summary="Générer une nouvelle clé API")
 async def create_key(
     body: KeyCreateIn,
