@@ -75,6 +75,14 @@ class LocalBackend(StorageBackend):
         abs_path = self.upload_root / relative_path
         try:
             abs_path.unlink(missing_ok=True)
+            # Nettoie les dossiers parents devenus vides (ex: .multipart/{id}/)
+            parent = abs_path.parent
+            while parent != self.upload_root and parent.is_dir():
+                try:
+                    parent.rmdir()   # échoue silencieusement si non vide
+                except OSError:
+                    break
+                parent = parent.parent
             return True
         except Exception:
             return False
