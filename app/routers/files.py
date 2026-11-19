@@ -3,7 +3,8 @@ StorageHub — Files router v2
 POST   /v1/files                              Upload (multipart) — avec virus scan, chiffrement, thumbnail, tags
 POST   /v1/files/bulk                         Upload multiple fichiers
 POST   /v1/files/from-url                     Importer depuis une URL distante
-GET    /v1/files                              Liste paginée des fichiers
+GET    /v1/files                              Liste paginée (filtres: category, folder, q)
+GET    /v1/files/folders                      Arborescence des dossiers logiques
 GET    /v1/files/{file_id}                    Stream (auth requise)
 GET    /v1/files/{file_id}/thumbnail          Miniature JPEG
 GET    /v1/files/{file_id}/meta               Métadonnées JSON
@@ -188,7 +189,7 @@ async def _do_upload(
 #  POST /v1/files — Upload simple
 # ──────────────────────────────────────────────
 @router.post("", response_model=schemas.FileUploadResponse, status_code=201,
-             summary="Upload un fichier (avatar, KYC, reçu)")
+             summary="Upload un fichier (avatars, kyc, receipts, files)")
 async def upload_file(
     request: Request,
     _rl=Depends(plan_upload_limit),
@@ -370,8 +371,6 @@ async def upload_from_url(
     filename = url.split("/")[-1].split("?")[0] or "remote_file"
 
     # Valider le contenu téléchargé comme un vrai upload
-    from fastapi.datastructures import UploadFile as FUploadFile
-    import io
     from app.utils.file_validation import validate_category as _vc, detect_mime_from_magic, is_dangerous_file
     from app.utils.file_validation import VALID_CATEGORIES
 

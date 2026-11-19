@@ -14,8 +14,6 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
 
-import aiofiles
-
 from app.config import settings
 from app.utils.security import derive_secret
 
